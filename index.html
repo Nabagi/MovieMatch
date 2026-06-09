@@ -327,8 +327,8 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 
       <div class="step-title">How Many Movies?</div>
       <div class="pill-row" id="countPills">
-        <div class="pill" onclick="setPill('count',10,this)">10</div>
-        <div class="pill sel" onclick="setPill('count',20,this)">20</div>
+        <div class="pill sel" onclick="setPill('count',10,this)">10</div>
+        <div class="pill" onclick="setPill('count',20,this)">20</div>
         <div class="pill" onclick="setPill('count',30,this)">30</div>
         <div class="pill" onclick="setPill('count',40,this)">40</div>
         <div class="pill" onclick="setPill('count',50,this)">50</div>
@@ -546,7 +546,7 @@ let S = {
   peer:null, conn:null, roomRef:null,
   phase:'idle', // idle, swiping, done, matching, ranking
 };
-let cfg = { count: 20, genre: 0 };
+let cfg = { count: 10, genre: 0 };
 // ── AUDIO ──
 let currentAudio = null;
 let previewCache = {};
@@ -952,10 +952,17 @@ function showMatches() {
   const list=document.getElementById('matchList');
   const sub=document.getElementById('matchSub');
   list.innerHTML='';
+  const banner = document.querySelector('.match-banner');
   if(!matches.length){
-    sub.textContent='Hmm, no matches this time!';
-    list.innerHTML='<div class="no-match">Very different taste 😅<br><br>Try another round!</div>';
+    banner.style.background = 'linear-gradient(135deg,#e63c64,#ff6b35)';
+    banner.style.webkitBackgroundClip = 'text';
+    banner.innerHTML = 'NO<br>MATCH 😕';
+    sub.textContent='Very different taste this time!';
+    list.innerHTML='<div class="no-match">Try another round!</div>';
   } else {
+    banner.style.background = 'linear-gradient(135deg,var(--match),#00b8ff)';
+    banner.style.webkitBackgroundClip = 'text';
+    banner.innerHTML = "IT'S A<br>MATCH!";
     sub.textContent=matches.length===1?'You both want to watch':'You both said yes to these';
     matches.forEach((m,i)=>{
       const el=document.createElement('div');

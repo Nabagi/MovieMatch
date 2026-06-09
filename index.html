@@ -66,6 +66,21 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .err{color:var(--accent);font-size:12px;display:none}
 .err.show{display:block}
 
+/* ── LANDING STEPS ── */
+.step{display:none;flex-direction:column;align-items:center;width:100%;gap:16px}
+.step.active{display:flex}
+.big-btn{width:100%;padding:22px 20px;border:none;border-radius:20px;
+  font-family:'Bebas Neue';font-size:28px;letter-spacing:3px;cursor:pointer;
+  transition:all .25s;text-align:center}
+.big-btn-start{background:linear-gradient(135deg,var(--accent),#ff6b35);color:#fff}
+.big-btn-join{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.big-btn:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3)}
+.back-btn{background:none;border:none;color:var(--muted);font-family:'DM Sans';
+  font-size:13px;cursor:pointer;padding:4px 0;align-self:flex-start}
+.back-btn:hover{color:var(--text)}
+.step-title{font-family:'Bebas Neue';font-size:32px;letter-spacing:3px;
+  color:var(--text);align-self:flex-start}
+
 /* ── PILL SELECTORS ── */
 .pill-label{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
 .pill-row{display:flex;flex-wrap:wrap;gap:7px}
@@ -124,7 +139,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .card-title{font-family:'Bebas Neue';font-size:26px;letter-spacing:1px;line-height:1.1}
 .card-meta{font-size:11px;color:rgba(255,255,255,.45);margin:4px 0 6px;letter-spacing:.5px}
 .card-desc{font-size:12px;color:rgba(255,255,255,.45);line-height:1.5;
-  display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
 .stamp{position:absolute;top:26px;padding:7px 16px;font-family:'Bebas Neue';
   font-size:34px;letter-spacing:3px;border-radius:8px;
@@ -273,27 +288,27 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <!-- ══════════════════════════════════════════════ -->
 <div class="screen" id="landingScreen">
 <div class="screen-inner">
-  <div class="logo">MovieMatch</div>
-  <div class="tagline">Swipe together · Watch together</div>
 
-  <div class="card" style="width:100%">
-    <h3>Create a Room</h3>
-    <input type="text" id="createName" placeholder="Your name" maxlength="20"/>
-
-    <div>
-      <div class="pill-label">Movies to swipe</div>
-      <div class="pill-row" id="countPills">
-        <div class="pill" onclick="setPill('count',10,this)">10</div>
-        <div class="pill sel" onclick="setPill('count',20,this)">20</div>
-        <div class="pill" onclick="setPill('count',30,this)">30</div>
-        <div class="pill" onclick="setPill('count',40,this)">40</div>
-        <div class="pill" onclick="setPill('count',50,this)">50</div>
-      </div>
+  <!-- STEP: HOME -->
+  <div class="step active" id="stepHome">
+    <div class="logo">MovieMatch</div>
+    <div class="tagline">Swipe together · Watch together</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:8px">
+      <button class="big-btn big-btn-start" onclick="showStep('stepCreate')">🎬 Start a Room</button>
+      <button class="big-btn big-btn-join" onclick="showStep('stepJoin')">🔗 Join a Room</button>
     </div>
+  </div>
 
-    <div>
-      <div class="pill-label">Category</div>
-      <div class="pill-row" id="genrePills">
+  <!-- STEP: CREATE -->
+  <div class="step" id="stepCreate">
+    <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:14px">
+      <div class="step-title">Your Name</div>
+      <input type="text" id="createName" placeholder="Enter your name" maxlength="20"/>
+
+      <div class="step-title">Category</div>
+      <div class="pill-row" id="genrePills" style="flex-wrap:wrap">
         <div class="pill sel" onclick="setPill('genre',0,this)">🎬 All</div>
         <div class="pill" onclick="setPill('genre',28,this)">⚔️ Action</div>
         <div class="pill" onclick="setPill('genre',35,this)">😂 Comedy</div>
@@ -305,22 +320,36 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
         <div class="pill" onclick="setPill('genre',53,this)">😱 Thriller</div>
         <div class="pill" onclick="setPill('genre',16,this)">✨ Animation</div>
       </div>
+
+      <div class="step-title">How Many Movies?</div>
+      <div class="pill-row" id="countPills">
+        <div class="pill" onclick="setPill('count',10,this)">10</div>
+        <div class="pill sel" onclick="setPill('count',20,this)">20</div>
+        <div class="pill" onclick="setPill('count',30,this)">30</div>
+        <div class="pill" onclick="setPill('count',40,this)">40</div>
+        <div class="pill" onclick="setPill('count',50,this)">50</div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:4px" onclick="createRoom()">Create Room →</button>
     </div>
-
-    <button class="btn btn-primary" onclick="createRoom()">Create Room 🎬</button>
   </div>
 
-  <div class="divider" style="width:100%;margin:12px 0">or</div>
-
-  <div class="card" style="width:100%">
-    <h3>Join a Room</h3>
-    <input type="text" id="joinName" placeholder="Your name" maxlength="20"/>
-    <input type="text" id="joinCode" placeholder="Room code (e.g. MOVIE)" maxlength="6"
-      style="text-transform:uppercase;margin-top:4px"
-      oninput="this.value=this.value.toUpperCase()"/>
-    <div class="err" id="joinErr">Room not found or already started.</div>
-    <button class="btn btn-secondary" onclick="joinRoom()">Join Room</button>
+  <!-- STEP: JOIN -->
+  <div class="step" id="stepJoin">
+    <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:14px">
+      <div class="step-title">Your Name</div>
+      <input type="text" id="joinName" placeholder="Enter your name" maxlength="20"/>
+      <div class="step-title">Room Code</div>
+      <input type="text" id="joinCode" placeholder="e.g. MOVIE" maxlength="6"
+        style="text-transform:uppercase;font-size:24px;letter-spacing:6px;text-align:center"
+        oninput="this.value=this.value.toUpperCase()"/>
+      <div class="err" id="joinErr">Room not found or already started.</div>
+      <button class="btn btn-secondary" style="margin-top:4px" onclick="joinRoom()">Join Room →</button>
+    </div>
   </div>
+
 </div>
 </div>
 
@@ -590,7 +619,7 @@ async function fetchMovies() {
           genre:m.genre_ids?.[0]||0,
           emoji:GENRE_EMOJI[m.genre_ids?.[0]]||'🎬',
           poster:IMG_BASE+m.poster_path,
-          desc:m.overview ? m.overview.slice(0,80).trimEnd()+'…' : '',
+          desc:m.overview ? m.overview.slice(0,120).trimEnd()+'…' : '',
           rating:m.vote_average?m.vote_average.toFixed(1):'—',
         });
       }
@@ -1253,6 +1282,7 @@ function playAgain(){
   document.getElementById('createName').value='';
   document.getElementById('joinName').value='';
   document.getElementById('joinCode').value='';
+  showStep('stepHome');
   show('landingScreen');
 }
 </script>

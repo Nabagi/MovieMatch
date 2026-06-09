@@ -731,7 +731,6 @@ function setupSwipe() {
 }
 
 function renderCards() {
-  _drag.active = false;
   const stack=document.getElementById('cardStack');
   stack.querySelectorAll('.mv-card').forEach(c=>c.remove());
   if(S.idx>=S.movies.length){finishSwiping();return;}

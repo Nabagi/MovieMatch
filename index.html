@@ -544,6 +544,7 @@ let S = {
   myName:'', roomCode:'', isHost:false,
   movies:[], idx:0, myVotes:{}, partnerVotes:null,
   peer:null, conn:null, roomRef:null,
+  phase:'idle', // idle, swiping, done, matching, ranking
 };
 let cfg = { count: 20, genre: 0 };
 // ── AUDIO ──
@@ -774,6 +775,13 @@ function onData(msg) {
     setupSwipe(); show('swipeScreen');
   } else if(msg.type==='joined') {
     toast(`${msg.name} joined! 🎬`);
+  } else if(msg.type==='rejoined') {
+    toast(`${msg.name} reconnected! 🎬`);
+    // If guest sent their votes on rejoin, process them
+    if(msg.votes && Object.keys(msg.votes).length) {
+      S.partnerVotes = msg.votes;
+      if(S.phase === 'done' && S.idx >= S.movies.length) showMatches();
+    }
   } else if(msg.type==='done') {
     S.partnerVotes=msg.votes;
     if(S.idx>=S.movies.length) showMatches();
@@ -797,6 +805,7 @@ function onData(msg) {
 //  SWIPE ENGINE
 // ════════════════════════════════════════════════════════
 function setupSwipe() {
+  S.phase='swiping';
   S.idx=0;
   document.getElementById('myBadge').textContent=S.myName;
   renderCards();
@@ -928,6 +937,7 @@ function recordVote(id,liked) {
 //  FINISH & MATCHES
 // ════════════════════════════════════════════════════════
 function finishSwiping() {
+  S.phase='done';
   stopPreview();
   clearInterval(slideshowTimer);
   if(S.conn&&S.conn.open) S.conn.send({type:'done',votes:S.myVotes});
@@ -962,6 +972,7 @@ function showMatches() {
       list.appendChild(el);
     });
   }
+  S.phase='matching';
   matchedMovies = matches;
   myRanking = []; partnerRanking = null;
   myModeChoice = null; partnerModeChoice = null; modeStarted = false; myRankingSubmitted = false;
@@ -1036,6 +1047,7 @@ function launchMode(mode) {
 //  RANKING MODE
 // ════════════════════════════════════════════════════════
 function startRanking() {
+  S.phase='ranking';
   myRanking = [...matchedMovies];
   renderRankList();
   show('rankScreen');

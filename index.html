@@ -360,549 +360,6 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     </div>
   </div>
   <div class="card-area">
- Y(16px)}to{opacity:1;transform:translateY(0)}}
-.match-poster{width:52px;height:74px;border-radius:8px;object-fit:cover;
-  background:var(--surface);flex-shrink:0}
-.match-emoji-box{width:52px;height:74px;border-radius:8px;background:var(--surface);
-  display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0}
-.match-title{font-family:'Bebas Neue';font-size:17px;letter-spacing:.5px;color:var(--match)}
-.match-meta{font-size:12px;color:var(--muted);margin-top:2px}
-.match-desc{font-size:12px;color:rgba(255,255,255,.35);margin-top:5px;line-height:1.45;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.no-match{text-align:center;color:var(--muted);padding:32px;font-size:15px;font-style:italic}
-
-/* ── LOADING ── */
-.overlay{position:fixed;inset:0;z-index:100;background:rgba(8,8,16,.85);
-  display:none;align-items:center;justify-content:flex-direction:column;gap:14px}
-.overlay.show{display:flex}
-.spinner{width:38px;height:38px;border:3px solid var(--border);
-  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.load-txt{font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
-
-/* ── TOAST ── */
-.toast{position:fixed;bottom:28px;left:50%;
-  transform:translateX(-50%) translateY(80px);
-  background:rgba(22,22,42,.97);border:1px solid var(--border);
-  border-radius:12px;padding:10px 20px;font-size:14px;z-index:200;
-  white-space:nowrap;transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
-.toast.show{transform:translateX(-50%) translateY(0)}
-
-
-/* ── MODE BUTTONS ── */
-.mode-row{display:flex;gap:10px;width:100%;margin-top:4px}
-.mode-btn{flex:1;padding:14px 10px;border:none;border-radius:13px;font-family:'DM Sans';
-  font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;text-align:center;line-height:1.4}
-.mode-rank{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff}
-.mode-rand{background:linear-gradient(135deg,var(--accent2),#ff6b35);color:#fff}
-.mode-btn:hover{transform:translateY(-2px);opacity:.9}
-
-/* ── RANK SCREEN ── */
-.rank-wrap{width:100%;max-width:400px;padding:28px 24px 60px;display:flex;flex-direction:column;align-items:center}
-.rank-title{font-family:'Bebas Neue';font-size:42px;letter-spacing:4px;
-  background:linear-gradient(135deg,#7c3aed,#a78bfa);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
-.rank-sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;text-align:center}
-.rank-list{display:flex;flex-direction:column;gap:8px;width:100%;margin-bottom:20px}
-.rank-item{background:var(--card);border:1px solid var(--border);border-radius:14px;
-  padding:10px 12px;display:flex;align-items:center;gap:12px;transition:all .2s}
-.rank-num{font-family:'Bebas Neue';font-size:22px;color:var(--accent2);width:24px;text-align:center;flex-shrink:0}
-.rank-poster{width:38px;height:54px;border-radius:6px;object-fit:cover;background:var(--surface);flex-shrink:0}
-.rank-info{flex:1;min-width:0}
-.rank-name{font-family:'Bebas Neue';font-size:15px;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rank-meta{font-size:11px;color:var(--muted);margin-top:1px}
-.rank-arrows{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
-.rank-arr{background:var(--surface);border:1px solid var(--border);border-radius:6px;
-  width:28px;height:24px;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;font-size:11px;transition:all .15s;color:var(--text)}
-.rank-arr:hover{border-color:var(--accent);color:var(--accent)}
-.rank-arr:disabled{opacity:.2;cursor:default}
-
-/* ── RANK WAIT ── */
-.rank-wait-card{background:var(--surface);border:1px solid var(--border);
-  border-radius:24px;padding:40px 32px;max-width:320px;text-align:center}
-
-/* ── WINNER SCREEN ── */
-.winner-wrap{width:100%;max-width:400px;padding:40px 24px 60px;display:flex;flex-direction:column;align-items:center}
-.winner-banner{font-family:'Bebas Neue';font-size:clamp(36px,11vw,64px);letter-spacing:4px;text-align:center;
-  background:linear-gradient(135deg,var(--accent2),#ff6b35);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  animation:pop .5s cubic-bezier(.34,1.56,.64,1);margin-bottom:6px}
-.winner-sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;text-align:center}
-.winner-card{background:var(--card);border:2px solid rgba(245,166,35,.3);border-radius:20px;
-  overflow:hidden;width:100%;max-width:300px;box-shadow:0 20px 60px rgba(0,0,0,.5);
-  animation:slideUp .5s ease both;margin-bottom:24px}
-.winner-poster{width:100%;aspect-ratio:2/3;object-fit:cover;display:block}
-.winner-poster-fallback{width:100%;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;font-size:80px;background:var(--surface)}
-.winner-info{padding:16px}
-.winner-title{font-family:'Bebas Neue';font-size:24px;letter-spacing:1px;color:var(--accent2)}
-.winner-meta{font-size:12px;color:var(--muted);margin-top:3px}
-.winner-desc{font-size:12px;color:rgba(255,255,255,.45);margin-top:8px;line-height:1.5}
-
-/* ── MUSIC INDICATOR ── */
-.music-bar{position:absolute;top:14px;right:14px;z-index:20;
-  display:flex;align-items:flex-end;gap:2px;height:18px;opacity:0;
-  transition:opacity .4s}
-.music-bar.show{opacity:1}
-.music-bar span{display:block;width:3px;background:rgba(255,255,255,.7);
-  border-radius:2px;animation:eq 1s ease-in-out infinite}
-.music-bar span:nth-child(1){height:6px;animation-delay:0s}
-.music-bar span:nth-child(2){height:12px;animation-delay:.2s}
-.music-bar span:nth-child(3){height:8px;animation-delay:.1s}
-.music-bar span:nth-child(4){height:14px;animation-delay:.3s}
-.music-bar span:nth-child(5){height:6px;animation-delay:.15s}
-@keyframes eq{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.3)}}
-
-/* ── TRAILER OVERLAY ── */
-.trailer-wrap{position:absolute;inset:0;overflow:hidden;border-radius:22px;pointer-events:none;z-index:1}
-.trailer-frame{position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  width:310%;aspect-ratio:16/9;
-  border:none;opacity:0;transition:opacity 1s ease;pointer-events:none}
-.trailer-frame.visible{opacity:1}
-.trailer-shield{position:absolute;inset:0;z-index:3;background:transparent;pointer-events:auto}
-.unmute-btn{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
-  z-index:10;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.3);
-  border-radius:20px;padding:8px 18px;color:#fff;font-family:'DM Sans';
-  font-size:13px;cursor:pointer;backdrop-filter:blur(8px);white-space:nowrap}
-
-.poster-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  transition:opacity .8s ease;z-index:2}
-.poster-img.hidden{opacity:0}
-
-/* scrollbar */
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-</style>
-</head>
-<body>
-
-<!-- ══════════════════════════════════════════════ -->
-<!-- LANDING                                        -->
-<!-- ══════════════════════════════════════════════ -->
-<div class="screen" id="landingScreen">
-<div class="screen-inner">
-  <div class="logo">MovieMatch</div>
-  <div class="tagline">Swipe together · Watch together</div>
-
-  <div class="card" style="width:100%;margin-bottom:12px">
-    <h3>Your Experience</h3>
-    <div class="mode-pick-row">
-      <div class="mode-pick-btn active" id="mpPoster" onclick="setViewMode('poster')">
-        <span class="mpb-icon">🎵</span>
-        <span class="mpb-label">Poster + Music</span>
-        <span class="mpb-sub">Movie poster with<br>soundtrack playing</span>
-      </div>
-      <div class="mode-pick-btn" id="mpTrailer" onclick="setViewMode('trailer')">
-        <span class="mpb-icon">🎬</span>
-        <span class="mpb-label">Trailer</span>
-        <span class="mpb-sub">Auto-plays with<br>original sound</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="card" style="width:100%">
-    <h3>Create a Room</h3>
-    <input type="text" id="createName" placeholder="Your name" maxlength="20"/>
-
-    <div>
-      <div class="pill-label">Movies to swipe</div>
-      <div class="pill-row" id="countPills">
-        <div class="pill" onclick="setPill('count',10,this)">10</div>
-        <div class="pill sel" onclick="setPill('count',20,this)">20</div>
-        <div class="pill" onclick="setPill('count',30,this)">30</div>
-        <div class="pill" onclick="setPill('count',40,this)">40</div>
-        <div class="pill" onclick="setPill('count',50,this)">50</div>
-      </div>
-    </div>
-
-    <div>
-      <div class="pill-label">Category</div>
-      <div class="pill-row" id="genrePills">
-        <div class="pill sel" onclick="setPill('genre',0,this)">🎬 All</div>
-        <div class="pill" onclick="setPill('genre',28,this)">⚔️ Action</div>
-        <div class="pill" onclick="setPill('genre',35,this)">😂 Comedy</div>
-        <div class="pill" onclick="setPill('genre',27,this)">👻 Horror</div>
-        <div class="pill" onclick="setPill('genre',18,this)">🎭 Drama</div>
-        <div class="pill" onclick="setPill('genre',878,this)">🚀 Sci-Fi</div>
-        <div class="pill" onclick="setPill('genre',10749,this)">💕 Romance</div>
-        <div class="pill" onclick="setPill('genre',14,this)">🧙 Fantasy</div>
-        <div class="pill" onclick="setPill('genre',53,this)">😱 Thriller</div>
-        <div class="pill" onclick="setPill('genre',16,this)">✨ Animation</div>
-      </div>
-    </div>
-
-    <button class="btn btn-primary" onclick="createRoom()">Create Room 🎬</button>
-  </div>
-
-  <div class="divider" style="width:100%;margin:12px 0">or</div>
-
-  <div class="card" style="width:100%">
-    <h3>Join a Room</h3>
-    <input type="text" id="joinName" placeholder="Your name" maxlength="20"/>
-    <input type="text" id="joinCode" placeholder="Room code (e.g. MOVIE)" maxlength="6"
-      style="text-transform:uppercase;margin-top:4px.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
-  padding:24px;width:100%;display:flex;flex-direction:column;gap:12px}
-.card+.card{margin-top:12px}
-.card h3{font-family:'Bebas Neue';font-size:18px;letter-spacing:2px}
-.card p{font-size:13px;color:var(--muted);line-height:1.65}
-
-/* ── INPUTS ── */
-input,textarea{width:100%;background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:13px 16px;color:var(--text);
-  font-family:'DM Sans';font-size:15px;outline:none;transition:border-color .2s;resize:vertical}
-input:focus,textarea:focus{border-color:var(--accent)}
-input::placeholder,textarea::placeholder{color:var(--muted)}
-
-/* ── BUTTONS ── */
-.btn{width:100%;padding:14px;border:none;border-radius:13px;
-  font-family:'DM Sans';font-size:15px;font-weight:500;cursor:pointer;
-  transition:all .2s;letter-spacing:.3px}
-.btn-primary{background:linear-gradient(135deg,var(--accent),#ff6b35);color:#fff}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(230,60,100,.35)}
-.btn-secondary{background:var(--card);border:1px solid var(--border);color:var(--text)}
-.btn-secondary:hover{border-color:var(--accent)}
-.btn:active{transform:translateY(0)!important}
-.btn-sm{width:auto;padding:8px 16px;font-size:13px;border-radius:10px}
-
-.divider{display:flex;align-items:center;gap:12px;color:var(--muted);
-  font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:4px 0}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
-
-/* ── ERROR ── */
-.err{color:var(--accent);font-size:12px;display:none}
-.err.show{display:block}
-
-/* ── VIEW MODE PICKER ── */
-.mode-pick-row{display:flex;gap:8px;width:100%}
-.mode-pick-btn{flex:1;padding:12px 8px;border-radius:14px;border:1px solid var(--border);
-  background:var(--card);cursor:pointer;text-align:center;transition:all .2s;font-family:'DM Sans'}
-.mode-pick-btn.active{border-color:var(--accent);background:rgba(230,60,100,.1)}
-.mode-pick-btn .mpb-icon{font-size:22px;display:block;margin-bottom:4px}
-.mode-pick-btn .mpb-label{font-size:12px;font-weight:500;color:var(--text);display:block}
-.mode-pick-btn .mpb-sub{font-size:10px;color:var(--muted);display:block;margin-top:2px}
-
-/* ── PILL SELECTORS ── */
-.pill-label{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
-.pill-row{display:flex;flex-wrap:wrap;gap:7px}
-.pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);
-  background:var(--card);color:var(--muted);font-family:'DM Sans';font-size:12px;
-  cursor:pointer;transition:all .2s;user-select:none}
-.pill.sel{background:rgba(230,60,100,.15);border-color:var(--accent);color:var(--text)}
-.pill:hover:not(.sel){border-color:rgba(255,255,255,.2);color:var(--text)}
-
-/* ── WAITING ── */
-.wait-card{background:var(--surface);border:1px solid var(--border);
-  border-radius:24px;padding:40px 32px;width:100%;max-width:340px;text-align:center}
-.code-label{font-size:11px;color:var(--muted);letter-spacing:3px;text-transform:uppercase}
-.room-code{font-family:'Bebas Neue';font-size:64px;letter-spacing:14px;color:var(--accent2);margin:12px 0 4px}
-.copy-btn{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);
-  border-radius:8px;padding:6px 14px;color:var(--accent2);
-  font-family:'DM Sans';font-size:12px;cursor:pointer;transition:background .2s;display:inline-block}
-.copy-btn:hover{background:rgba(245,166,35,.2)}
-.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;
-  background:var(--accent);margin-right:8px;animation:pulse 1.5s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
-
-/* ── SWIPE SCREEN ── */
-#swipeScreen{padding:0}
-.swipe-layout{width:100%;max-width:360px;height:100vh;display:flex;
-  flex-direction:column;align-items:center;padding:0 0 12px}
-.swipe-hdr{width:100%;display:flex;justify-content:space-between;
-  align-items:center;padding:18px 4px 12px;flex-shrink:0}
-.logo-sm{font-family:'Bebas Neue';font-size:24px;letter-spacing:2px;
-  background:linear-gradient(135deg,#e63c64,#f5a623);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.badge{background:var(--card);border:1px solid var(--border);
-  border-radius:20px;padding:4px 12px;font-size:12px;color:var(--accent2)}
-.prog{font-size:12px;color:var(--muted)}
-
-.card-area{position:relative;width:100%;flex:1;min-height:0;display:flex;
-  align-items:center;justify-content:center}
-.card-stack{position:relative;width:100%;height:100%;max-height:500px}
-
-.mv-card{position:absolute;inset:0;border-radius:22px;overflow:hidden;
-  box-shadow:0 20px 60px rgba(0,0,0,.6);cursor:grab;user-select:none;background:var(--card)}
-.mv-card:active{cursor:grabbing}
-.mv-card.behind{transform:scale(.93) translateY(18px);z-index:0;pointer-events:none}
-.mv-card.active{z-index:10}
-
-.poster{width:100%;height:100%;object-fit:cover;display:block;background:var(--card)}
-.poster-fallback{width:100%;height:100%;display:flex;align-items:center;
-  justify-content:center;font-size:80px}
-.card-info{position:absolute;bottom:0;left:0;right:0;
-  padding:80px 18px 18px;
-  background:linear-gradient(transparent,rgba(0,0,0,.97))}
-.card-genre{display:inline-block;background:rgba(230,60,100,.2);
-  border:1px solid rgba(230,60,100,.35);border-radius:20px;
-  padding:3px 10px;font-size:10px;color:var(--accent);
-  letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
-.card-title{font-family:'Bebas Neue';font-size:26px;letter-spacing:1px;line-height:1.1}
-.card-meta{font-size:11px;color:rgba(255,255,255,.45);margin:4px 0 6px;letter-spacing:.5px}
-.card-desc{font-size:12px;color:rgba(255,255,255,.45);line-height:1.5;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-
-.stamp{position:absolute;top:26px;padding:7px 16px;font-family:'Bebas Neue';
-  font-size:34px;letter-spacing:3px;border-radius:8px;
-  opacity:0;transition:opacity .1s;pointer-events:none;z-index:20}
-.stamp-yes{left:14px;color:#00d4a0;border:3px solid #00d4a0;transform:rotate(-15deg)}
-.stamp-no{right:14px;color:var(--accent);border:3px solid var(--accent);transform:rotate(15deg)}
-
-.act-row{display:flex;gap:20px;align-items:center;padding:12px 0 8px;flex-shrink:0}
-.act-btn{border-radius:50%;border:none;cursor:pointer;display:flex;
-  align-items:center;justify-content:center;font-size:26px;
-  transition:all .2s;box-shadow:0 6px 20px rgba(0,0,0,.3)}
-.act-no{width:58px;height:58px;background:var(--surface);border:2px solid var(--accent)}
-.act-no:hover{background:var(--accent);transform:scale(1.1)}
-.act-yes{width:72px;height:72px;background:var(--surface);border:2px solid var(--match);font-size:32px}
-.act-yes:hover{background:var(--match);transform:scale(1.1)}
-.hint{font-size:11px;color:var(--muted);letter-spacing:1px;flex-shrink:0;padding-bottom:4px}
-
-/* ── DONE WAIT ── */
-.done-card{background:var(--surface);border:1px solid var(--border);
-  border-radius:24px;padding:40px 32px;max-width:320px;text-align:center}
-.done-title{font-family:'Bebas Neue';font-size:40px;letter-spacing:3px;margin-bottom:10px}
-
-/* ── MATCHES ── */
-#matchScreen{overflow-y:auto}
-.match-wrap{width:100%;max-width:400px;padding:40px 24px 60px;
-  display:flex;flex-direction:column;align-items:center}
-.match-banner{font-family:'Bebas Neue';font-size:clamp(44px,13vw,78px);letter-spacing:5px;
-  background:linear-gradient(135deg,var(--match),#00b8ff);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  text-align:center;animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
-@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
-.match-sub{text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px;
-  text-transform:uppercase;margin-bottom:24px;margin-top:4px}
-.match-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;width:100%}
-.match-item{background:var(--card);border:1px solid rgba(0,212,160,.15);
-  border-radius:16px;padding:12px 16px;display:flex;align-items:flex-start;gap:14px;
-  animation:slideUp .4s ease both}
-@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.match-poster{width:52px;height:74px;border-radius:8px;object-fit:cover;
-  background:var(--surface);flex-shrink:0}
-.match-emoji-box{width:52px;height:74px;border-radius:8px;background:var(--surface);
-  display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0}
-.match-title{font-family:'Bebas Neue';font-size:17px;letter-spacing:.5px;color:var(--match)}
-.match-meta{font-size:12px;color:var(--muted);margin-top:2px}
-.match-desc{font-size:12px;color:rgba(255,255,255,.35);margin-top:5px;line-height:1.45;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.no-match{text-align:center;color:var(--muted);padding:32px;font-size:15px;font-style:italic}
-
-/* ── LOADING ── */
-.overlay{position:fixed;inset:0;z-index:100;background:rgba(8,8,16,.85);
-  display:none;align-items:center;justify-content:flex-direction:column;gap:14px}
-.overlay.show{display:flex}
-.spinner{width:38px;height:38px;border:3px solid var(--border);
-  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.load-txt{font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
-
-/* ── TOAST ── */
-.toast{position:fixed;bottom:28px;left:50%;
-  transform:translateX(-50%) translateY(80px);
-  background:rgba(22,22,42,.97);border:1px solid var(--border);
-  border-radius:12px;padding:10px 20px;font-size:14px;z-index:200;
-  white-space:nowrap;transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
-.toast.show{transform:translateX(-50%) translateY(0)}
-
-
-/* ── MODE BUTTONS ── */
-.mode-row{display:flex;gap:10px;width:100%;margin-top:4px}
-.mode-btn{flex:1;padding:14px 10px;border:none;border-radius:13px;font-family:'DM Sans';
-  font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;text-align:center;line-height:1.4}
-.mode-rank{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff}
-.mode-rand{background:linear-gradient(135deg,var(--accent2),#ff6b35);color:#fff}
-.mode-btn:hover{transform:translateY(-2px);opacity:.9}
-
-/* ── RANK SCREEN ── */
-.rank-wrap{width:100%;max-width:400px;padding:28px 24px 60px;display:flex;flex-direction:column;align-items:center}
-.rank-title{font-family:'Bebas Neue';font-size:42px;letter-spacing:4px;
-  background:linear-gradient(135deg,#7c3aed,#a78bfa);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
-.rank-sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;text-align:center}
-.rank-list{display:flex;flex-direction:column;gap:8px;width:100%;margin-bottom:20px}
-.rank-item{background:var(--card);border:1px solid var(--border);border-radius:14px;
-  padding:10px 12px;display:flex;align-items:center;gap:12px;transition:all .2s}
-.rank-num{font-family:'Bebas Neue';font-size:22px;color:var(--accent2);width:24px;text-align:center;flex-shrink:0}
-.rank-poster{width:38px;height:54px;border-radius:6px;object-fit:cover;background:var(--surface);flex-shrink:0}
-.rank-info{flex:1;min-width:0}
-.rank-name{font-family:'Bebas Neue';font-size:15px;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rank-meta{font-size:11px;color:var(--muted);margin-top:1px}
-.rank-arrows{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
-.rank-arr{background:var(--surface);border:1px solid var(--border);border-radius:6px;
-  width:28px;height:24px;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;font-size:11px;transition:all .15s;color:var(--text)}
-.rank-arr:hover{border-color:var(--accent);color:var(--accent)}
-.rank-arr:disabled{opacity:.2;cursor:default}
-
-/* ── RANK WAIT ── */
-.rank-wait-card{background:var(--surface);border:1px solid var(--border);
-  border-radius:24px;padding:40px 32px;max-width:320px;text-align:center}
-
-/* ── WINNER SCREEN ── */
-.winner-wrap{width:100%;max-width:400px;padding:40px 24px 60px;display:flex;flex-direction:column;align-items:center}
-.winner-banner{font-family:'Bebas Neue';font-size:clamp(36px,11vw,64px);letter-spacing:4px;text-align:center;
-  background:linear-gradient(135deg,var(--accent2),#ff6b35);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  animation:pop .5s cubic-bezier(.34,1.56,.64,1);margin-bottom:6px}
-.winner-sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;text-align:center}
-.winner-card{background:var(--card);border:2px solid rgba(245,166,35,.3);border-radius:20px;
-  overflow:hidden;width:100%;max-width:300px;box-shadow:0 20px 60px rgba(0,0,0,.5);
-  animation:slideUp .5s ease both;margin-bottom:24px}
-.winner-poster{width:100%;aspect-ratio:2/3;object-fit:cover;display:block}
-.winner-poster-fallback{width:100%;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;font-size:80px;background:var(--surface)}
-.winner-info{padding:16px}
-.winner-title{font-family:'Bebas Neue';font-size:24px;letter-spacing:1px;color:var(--accent2)}
-.winner-meta{font-size:12px;color:var(--muted);margin-top:3px}
-.winner-desc{font-size:12px;color:rgba(255,255,255,.45);margin-top:8px;line-height:1.5}
-
-/* ── MUSIC INDICATOR ── */
-.music-bar{position:absolute;top:14px;right:14px;z-index:20;
-  display:flex;align-items:flex-end;gap:2px;height:18px;opacity:0;
-  transition:opacity .4s}
-.music-bar.show{opacity:1}
-.music-bar span{display:block;width:3px;background:rgba(255,255,255,.7);
-  border-radius:2px;animation:eq 1s ease-in-out infinite}
-.music-bar span:nth-child(1){height:6px;animation-delay:0s}
-.music-bar span:nth-child(2){height:12px;animation-delay:.2s}
-.music-bar span:nth-child(3){height:8px;animation-delay:.1s}
-.music-bar span:nth-child(4){height:14px;animation-delay:.3s}
-.music-bar span:nth-child(5){height:6px;animation-delay:.15s}
-@keyframes eq{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.3)}}
-
-/* ── TRAILER OVERLAY ── */
-.trailer-wrap{position:absolute;inset:0;overflow:hidden;border-radius:22px;pointer-events:none;z-index:1}
-.trailer-frame{position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  width:310%;aspect-ratio:16/9;
-  border:none;opacity:0;transition:opacity 1s ease;pointer-events:none}
-.trailer-frame.visible{opacity:1}
-.trailer-shield{position:absolute;inset:0;z-index:3;background:transparent;pointer-events:auto}
-.unmute-btn{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
-  z-index:10;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.3);
-  border-radius:20px;padding:8px 18px;color:#fff;font-family:'DM Sans';
-  font-size:13px;cursor:pointer;backdrop-filter:blur(8px);white-space:nowrap}
-
-.poster-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  transition:opacity .8s ease;z-index:2}
-.poster-img.hidden{opacity:0}
-
-/* scrollbar */
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-</style>
-</head>
-<body>
-
-<!-- ══════════════════════════════════════════════ -->
-<!-- LANDING                                        -->
-<!-- ══════════════════════════════════════════════ -->
-<div class="screen" id="landingScreen">
-<div class="screen-inner">
-  <div class="logo">MovieMatch</div>
-  <div class="tagline">Swipe together · Watch together</div>
-
-  <div class="card" style="width:100%;margin-bottom:12px">
-    <h3>Your Experience</h3>
-    <div class="mode-pick-row">
-      <div class="mode-pick-btn active" id="mpPoster" onclick="setViewMode('poster')">
-        <span class="mpb-icon">🎵</span>
-        <span class="mpb-label">Poster + Music</span>
-        <span class="mpb-sub">Movie poster with<br>soundtrack playing</span>
-      </div>
-      <div class="mode-pick-btn" id="mpTrailer" onclick="setViewMode('trailer')">
-        <span class="mpb-icon">🎬</span>
-        <span class="mpb-label">Trailer</span>
-        <span class="mpb-sub">Auto-plays with<br>original sound</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="card" style="width:100%">
-    <h3>Create a Room</h3>
-    <input type="text" id="createName" placeholder="Your name" maxlength="20"/>
-
-    <div>
-      <div class="pill-label">Movies to swipe</div>
-      <div class="pill-row" id="countPills">
-        <div class="pill" onclick="setPill('count',10,this)">10</div>
-        <div class="pill sel" onclick="setPill('count',20,this)">20</div>
-        <div class="pill" onclick="setPill('count',30,this)">30</div>
-        <div class="pill" onclick="setPill('count',40,this)">40</div>
-        <div class="pill" onclick="setPill('count',50,this)">50</div>
-      </div>
-    </div>
-
-    <div>
-      <div class="pill-label">Category</div>
-      <div class="pill-row" id="genrePills">
-        <div class="pill sel" onclick="setPill('genre',0,this)">🎬 All</div>
-        <div class="pill" onclick="setPill('genre',28,this)">⚔️ Action</div>
-        <div class="pill" onclick="setPill('genre',35,this)">😂 Comedy</div>
-        <div class="pill" onclick="setPill('genre',27,this)">👻 Horror</div>
-        <div class="pill" onclick="setPill('genre',18,this)">🎭 Drama</div>
-        <div class="pill" onclick="setPill('genre',878,this)">🚀 Sci-Fi</div>
-        <div class="pill" onclick="setPill('genre',10749,this)">💕 Romance</div>
-        <div class="pill" onclick="setPill('genre',14,this)">🧙 Fantasy</div>
-        <div class="pill" onclick="setPill('genre',53,this)">😱 Thriller</div>
-        <div class="pill" onclick="setPill('genre',16,this)">✨ Animation</div>
-      </div>
-    </div>
-
-    <button class="btn btn-primary" onclick="createRoom()">Create Room 🎬</button>
-  </div>
-
-  <div class="divider" style="width:100%;margin:12px 0">or</div>
-
-  <div class="card" style="width:100%">
-    <h3>Join a Room</h3>
-    <input type="text" id="joinName" placeholder="Your name" maxlength="20"/>
-    <input type="text" id="joinCode" placeholder="Room code (e.g. MOVIE)" maxlength="6"
-      style="text-transform:uppercase;margin-top:4px"
-      oninput="this.value=this.value.toUpperCase()"/>
-    <div class="err" id="joinErr">Room not found or already started.</div>
-    <button class="btn btn-secondary" onclick="joinRoom()">Join Room</button>
-  </div>
-</div>
-</div>
-
-<!-- ══════════════════════════════════════════════ -->
-<!-- WAITING                                        -->
-<!-- ══════════════════════════════════════════════ -->
-<div class="screen" id="waitingScreen">
-<div class="screen-inner">
-  <div class="wait-card">
-    <div class="code-label">Room Code</div>
-    <div class="room-code" id="displayCode">----</div>
-    <button class="copy-btn" onclick="copyCode()">📋 Copy Code</button>
-    <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.65">
-      Share this code with your partner.<br>
-      You'll both swipe the same movies independently.<br>
-      Matches reveal only when both are done.
-    </p>
-    <div style="margin-top:24px;font-size:13px;color:var(--muted)">
-      <span class="pulse"></span><span id="waitStatus">Waiting for partner...</span>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- ══════════════════════════════════════════════ -->
-<!-- SWIPING                                        -->
-<!-- ══════════════════════════════════════════════ -->
-<div class="screen" id="swipeScreen">
-<div class="swipe-layout">
-  <div class="swipe-hdr">
-    <div class="logo-sm">MovieMatch</div>
-    <div class="badge" id="myBadge">You</div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="music-bar" id="musicBar"><span></span><span></span><span></span><span></span><span></span></div>
-      <button id="muteBtn" onclick="toggleMute()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px 8px;color:var(--muted);font-size:14px;cursor:pointer">🔊</button>
-      <div class="prog" id="progText">1/20</div>
-    </div>
-  </div>
-  <div class="card-area">
     <div class="card-stack" id="cardStack">
       <div class="stamp stamp-yes" id="stampYes">WATCH</div>
       <div class="stamp stamp-no"  id="stampNo">SKIP</div>
@@ -1049,8 +506,6 @@ let S = {
   peer:null, conn:null, roomRef:null,
 };
 let cfg = { count: 20, genre: 0 };
-let viewMode = 'poster'; // 'poster' or 'trailer'
-
 // ── AUDIO ──
 let currentAudio = null;
 let previewCache = {};
@@ -1084,15 +539,6 @@ function initFirebase(cfg) {
   }
   S.fbApp = firebase.initializeApp(cfg, `mm-${Date.now()}`);
   S.db = firebase.database(S.fbApp);
-}
-
-// ════════════════════════════════════════════════════════
-//  VIEW MODE
-// ════════════════════════════════════════════════════════
-function setViewMode(mode) {
-  viewMode = mode;
-  document.getElementById('mpPoster').classList.toggle('active', mode === 'poster');
-  document.getElementById('mpTrailer').classList.toggle('active', mode === 'trailer');
 }
 
 // ════════════════════════════════════════════════════════
@@ -1293,14 +739,9 @@ function renderCards() {
   stack.appendChild(active);
   attachDrag(active);
   const nextMovie = S.movies[S.idx+1] || null;
-  if(viewMode === 'poster') {
-    // Poster mode: soundtrack only, no video
-    onCardChanged(S.movies[S.idx], nextMovie);
-  } else {
-    // Trailer mode: video with sound, no soundtrack
-    stopPreview(true);
-    showTrailerOnCard(S.movies[S.idx]);
-  }
+  onCardChanged(S.movies[S.idx], nextMovie);
+  startSlideshow(S.movies[S.idx]);
+  if(nextMovie) prefetchBackdrops(nextMovie.id);
 }
 
 function buildCard(m,isActive) {
@@ -1309,10 +750,9 @@ function buildCard(m,isActive) {
   el.dataset.id=m.id;
   const bg=GENRE_BG[m.genre]||'#10101c';
   el.innerHTML=`
-    <div class="trailer-wrap">
-      <div class="poster-fallback" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:80px;background:${bg}">${m.emoji}</div>
-      <img class="poster-img" src="${m.poster}" alt="${m.title}"
-        onerror="this.style.opacity='0'">
+    <div class="slide-wrap" id="slides_${m.id}">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:80px;background:${bg}">${m.emoji}</div>
+      <img class="slide-img active" src="${m.poster}" alt="${m.title}" onerror="this.style.display='none'">
     </div>
     <div class="card-info">
       <div class="card-genre">${m.emoji} ${m.year}</div>
@@ -1387,8 +827,7 @@ function recordVote(id,liked) {
 // ════════════════════════════════════════════════════════
 function finishSwiping() {
   stopPreview();
-  clearTimeout(trailerTimeout);
-  document.querySelectorAll('.trailer-frame').forEach(f => f.remove());
+  clearInterval(slideshowTimer);
   if(S.conn&&S.conn.open) S.conn.send({type:'done',votes:S.myVotes});
   if(S.partnerVotes) { showMatches(); return; }
   show('doneWaitScreen');
@@ -1709,99 +1148,58 @@ async function onCardChanged(movie, nextMovie) {
 }
 
 // ════════════════════════════════════════════════════════
-//  TRAILER PREVIEWS
+//  BACKDROP SLIDESHOW
 // ════════════════════════════════════════════════════════
-async function fetchTrailerKey(movieId) {
-  if(trailerCache[movieId] !== undefined) return trailerCache[movieId];
+let backdropCache = {};
+let slideshowTimer = null;
+
+async function prefetchBackdrops(movieId) {
+  if(backdropCache[movieId] !== undefined) return;
   try {
-    const data = await tmdb(`/movie/${movieId}/videos`);
-    const videos = data.results || [];
-    const yt = videos.filter(v => v.site === 'YouTube');
-    const trailer =
-      yt.find(v => v.official && v.type === 'Trailer') ||   // official trailer first
-      yt.find(v => v.type === 'Trailer') ||                  // any trailer
-      yt.find(v => v.official && v.type === 'Teaser') ||    // official teaser
-      yt.find(v => v.type === 'Teaser') ||                   // any teaser
-      yt[0] || null;                                         // fallback
-    const key = trailer?.key || null;
-    trailerCache[movieId] = key;
-    return key;
+    const data = await tmdb(`/movie/${movieId}/images`);
+    const backdrops = (data.backdrops || [])
+      .slice(0, 6)
+      .map(b => `https://image.tmdb.org/t/p/w780${b.file_path}`);
+    backdropCache[movieId] = backdrops.length ? backdrops : null;
   } catch(e) {
-    trailerCache[movieId] = null;
-    return null;
+    backdropCache[movieId] = null;
   }
 }
 
-let trailerTimeout = null;
+async function startSlideshow(movie) {
+  clearInterval(slideshowTimer);
+  // Fetch backdrops if not cached
+  if(backdropCache[movie.id] === undefined) await prefetchBackdrops(movie.id);
+  const images = backdropCache[movie.id];
+  if(!images || images.length < 2) return; // just show poster
 
-async function showTrailerOnCard(movie) {
-  clearTimeout(trailerTimeout);
-  // Remove any existing iframe
-  document.querySelectorAll('.trailer-frame').forEach(f => f.remove());
-  document.querySelectorAll('.poster-img').forEach(p => p.classList.remove('hidden'));
+  const wrap = document.getElementById(`slides_${movie.id}`);
+  if(!wrap) return;
 
-  trailerTimeout = setTimeout(async () => {
-    const key = await fetchTrailerKey(movie.id);
-    if(!key) return;
-    // Find the active card's trailer-wrap
-    const activeCard = document.querySelector('.mv-card.active');
-    if(!activeCard) return;
-    const wrap = activeCard.querySelector('.trailer-wrap');
-    if(!wrap) return;
-    const iframe = document.createElement('iframe');
-    iframe.className = 'trailer-frame';
-    iframe.allow = 'autoplay; encrypted-media';
-    iframe.src = `https://www.youtube.com/embed/${key}?autoplay=1&mute=1&controls=0&loop=1&playlist=${key}&modestbranding=1&rel=0&playsinline=1&start=10&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1`;
-    // Transparent shield hides YouTube UI (play button, logo etc)
-    const shield = document.createElement('div');
-    shield.className = 'trailer-shield';
-    wrap.appendChild(iframe);
-    wrap.appendChild(shield);
-    // Fast path: postMessage reveals it when playing
-    // Fallback: force reveal after 3s regardless (handles autoplay policy differences)
-    const revealTimer = setTimeout(revealTrailer, 3000);
-    iframe._revealTimer = revealTimer;
-  }, 1500); // wait 1.5s before loading — snappier swipes
-}
+  // Preload all images then add to DOM
+  const loaded = await Promise.all(images.map(src => new Promise(res => {
+    const img = new Image();
+    img.onload = () => res(src);
+    img.onerror = () => res(null);
+    img.src = src;
+  })));
+  const valid = loaded.filter(Boolean);
+  if(valid.length < 2) return;
 
-// YouTube postMessage — reveal trailer and unmute when confirmed playing
-window.addEventListener('message', (e) => {
-  try {
-    if(!e.origin.includes('youtube.com')) return;
-    const data = JSON.parse(e.data);
-    // onReady: unmute immediately if trailer mode
-    if(data.event === 'onReady' && viewMode === 'trailer') {
-      const frames = document.querySelectorAll('.trailer-frame');
-      frames.forEach(f => {
-        f.contentWindow.postMessage(JSON.stringify({event:'command',func:'unMute',args:[]}), '*');
-        f.contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[100]}), '*');
-      });
-    }
-    // onStateChange 1 = playing — fast path reveal
-    if(data.event === 'onStateChange' && data.info === 1) {
-      if(viewMode === 'trailer') {
-        // Also unmute on playing in case onReady fired too early
-        const frames = document.querySelectorAll('.trailer-frame');
-        frames.forEach(f => {
-          f.contentWindow.postMessage(JSON.stringify({event:'command',func:'unMute',args:[]}), '*');
-          f.contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[100]}), '*');
-        });
-      }
-      revealTrailer();
-    }
-  } catch(e) {}
-});
+  // Replace poster with backdrop slides
+  wrap.innerHTML = valid.map((src, i) =>
+    `<img class="slide-img${i===0?' active':''}" src="${src}">`
+  ).join('');
 
-function revealTrailer() {
-  document.querySelectorAll('.trailer-frame').forEach(f => {
-    if(f.classList.contains('visible')) return;
-    f.classList.add('visible');
-    const wrap = f.closest('.trailer-wrap');
-    if(wrap) {
-      const poster = wrap.querySelector('.poster-img');
-      if(poster) poster.classList.add('hidden');
-    }
-  });
+  // Cycle every 1.2 seconds
+  let idx = 0;
+  slideshowTimer = setInterval(() => {
+    const slides = wrap.querySelectorAll('.slide-img');
+    if(!slides.length) { clearInterval(slideshowTimer); return; }
+    slides[idx % slides.length].classList.remove('active');
+    idx = (idx + 1) % slides.length;
+    slides[idx].classList.add('active');
+  }, 1200);
 }
 
 // ════════════════════════════════════════════════════════
@@ -1818,7 +1216,7 @@ function hideLoad(){document.getElementById('overlay').classList.remove('show');
 function toast(msg,d=2800){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
 function copyCode(){navigator.clipboard.writeText(S.roomCode).then(()=>toast('Code copied! 📋')).catch(()=>toast(`Code: ${S.roomCode}`));}
 function playAgain(){
-  matchedMovies=[];myRanking=[];trailerCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
+  matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
   if(S.peer){try{S.peer.destroy();}catch(e){}}
   S.peer=null;S.conn=null;S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.roomRef=null;
   document.getElementById('createName').value='';

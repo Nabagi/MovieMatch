@@ -732,7 +732,6 @@ function setupSwipe() {
 
 function renderCards() {
   _drag.active = false;
-  _drag.card = null;
   const stack=document.getElementById('cardStack');
   stack.querySelectorAll('.mv-card').forEach(c=>c.remove());
   if(S.idx>=S.movies.length){finishSwiping();return;}
@@ -770,56 +769,64 @@ function updateProg() {
   document.getElementById('progText').textContent=`${S.idx+1}/${S.movies.length}`;
 }
 
-// ── DRAG — single global handler, no stacking ──
-let _drag = { active:false, card:null, sx:0, sy:0, cx:0 };
+// ── DRAG — attached to card-stack, no re-attaching per card ──
+let _drag = { active:false, sx:0, sy:0, cx:0 };
 
 function initGlobalDrag() {
-  const sy_ = () => document.getElementById('stampYes');
-  const sn_ = () => document.getElementById('stampNo');
+  const stack = () => document.getElementById('cardStack');
+  const stampY = () => document.getElementById('stampYes');
+  const stampN = () => document.getElementById('stampNo');
+  const activeCard = () => document.querySelector('.mv-card.active');
 
-  const onMove = e => {
-    if(!_drag.active) return;
-    const p = e.touches ? e.touches[0] : e;
-    _drag.cx = p.clientX - _drag.sx;
-    const cy = (p.clientY - _drag.sy) * 0.3;
-    _drag.card.style.transform = `translateX(${_drag.cx}px) translateY(${cy}px) rotate(${_drag.cx * .08}deg)`;
-    const t = 70;
-    if(_drag.cx > t)      { sy_().style.opacity = Math.min((_drag.cx-t)/60,1); sn_().style.opacity=0; }
-    else if(_drag.cx < -t){ sn_().style.opacity = Math.min((-_drag.cx-t)/60,1); sy_().style.opacity=0; }
-    else                  { sy_().style.opacity=0; sn_().style.opacity=0; }
-  };
-
-  const onEnd = () => {
-    if(!_drag.active) return;
-    _drag.active = false;
-    sy_().style.opacity=0; sn_().style.opacity=0;
-    _drag.card.style.transition = 'transform .3s ease';
-    if(_drag.cx > 80)       flyOut(_drag.card, 'right');
-    else if(_drag.cx < -80) flyOut(_drag.card, 'left');
-    else                    _drag.card.style.transform = '';
-    _drag.cx = 0;
-  };
-
-  window.addEventListener('mousemove', onMove);
-  window.addEventListener('touchmove', onMove, {passive:true});
-  window.addEventListener('mouseup', onEnd);
-  window.addEventListener('touchend', onEnd);
-}
-
-function attachDrag(card) {
   const onStart = e => {
+    const card = activeCard();
+    if(!card) return;
     unlockAudio();
     _drag.active = true;
-    _drag.card = card;
     _drag.cx = 0;
     card.style.transition = 'none';
     const p = e.touches ? e.touches[0] : e;
     _drag.sx = p.clientX;
     _drag.sy = p.clientY;
   };
-  card.addEventListener('mousedown', onStart);
-  card.addEventListener('touchstart', onStart, {passive:true});
+
+  const onMove = e => {
+    if(!_drag.active) return;
+    const card = activeCard();
+    if(!card) return;
+    const p = e.touches ? e.touches[0] : e;
+    _drag.cx = p.clientX - _drag.sx;
+    const cy = (p.clientY - _drag.sy) * 0.3;
+    card.style.transform = `translateX(${_drag.cx}px) translateY(${cy}px) rotate(${_drag.cx * .08}deg)`;
+    const t = 70;
+    if(_drag.cx > t)       { stampY().style.opacity = Math.min((_drag.cx-t)/60,1); stampN().style.opacity=0; }
+    else if(_drag.cx < -t) { stampN().style.opacity = Math.min((-_drag.cx-t)/60,1); stampY().style.opacity=0; }
+    else                   { stampY().style.opacity=0; stampN().style.opacity=0; }
+  };
+
+  const onEnd = e => {
+    if(!_drag.active) return;
+    _drag.active = false;
+    stampY().style.opacity=0; stampN().style.opacity=0;
+    const card = activeCard();
+    if(!card) return;
+    card.style.transition = 'transform .3s ease';
+    if(_drag.cx > 80)       flyOut(card, 'right');
+    else if(_drag.cx < -80) flyOut(card, 'left');
+    else                    card.style.transform = '';
+    _drag.cx = 0;
+  };
+
+  const el = document.getElementById('cardStack');
+  el.addEventListener('mousedown', onStart);
+  el.addEventListener('touchstart', onStart, {passive:true});
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, {passive:true});
+  window.addEventListener('mouseup', onEnd);
+  window.addEventListener('touchend', onEnd);
 }
+
+function attachDrag(card) {} // no-op — drag handled by card-stack
 
 function flyOut(card,dir) {
   const x=dir==='right'?700:-700;
@@ -1161,9 +1168,10 @@ function showMusicBar(visible) {
 }
 
 async function onCardChanged(movie, nextMovie) {
-  stopPreview(true); // stop immediately — don't wait for fetch
+  stopPreview(true);
   const url = await fetchPreview(movie);
-  playPreview(url);
+  // Guard: only play if we're still on this movie
+  if(S.movies[S.idx] && S.movies[S.idx].id === movie.id) playPreview(url);
   if(nextMovie && previewCache[nextMovie.id] === undefined) fetchPreview(nextMovie);
 }
 

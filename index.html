@@ -132,6 +132,10 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .card-info{position:absolute;bottom:0;left:0;right:0;
   padding:80px 18px 18px;
   background:linear-gradient(transparent,rgba(0,0,0,.97));z-index:5}
+.card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.card-tag{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;padding:3px 10px;font-size:10px;color:rgba(255,255,255,.7);
+  letter-spacing:.5px;white-space:nowrap}
 .card-genre{display:inline-block;background:rgba(230,60,100,.2);
   border:1px solid rgba(230,60,100,.35);border-radius:20px;
   padding:3px 10px;font-size:10px;color:var(--accent);
@@ -519,6 +523,13 @@ const GENRE_EMOJI = {
   10749:'💕',878:'🚀',10770:'📺',53:'😱',10752:'🪖',37:'🤠'
 };
 
+const GENRE_NAMES = {
+  28:'Action',12:'Adventure',16:'Animation',35:'Comedy',80:'Crime',
+  99:'Documentary',18:'Drama',10751:'Family',14:'Fantasy',36:'History',
+  27:'Horror',10402:'Music',9648:'Mystery',10749:'Romance',878:'Sci-Fi',
+  53:'Thriller',10752:'War',37:'Western',10770:'TV Movie'
+};
+
 const GENRE_BG = {
   28:'#1a0500',12:'#001a0a',16:'#00001a',35:'#1a1500',80:'#1a0000',
   18:'#0a0a1a',27:'#0d0010',10749:'#1a000f',878:'#000d1a',53:'#0d0a00',
@@ -625,6 +636,7 @@ async function fetchMovies() {
           id:m.id, title:m.title,
           year:m.release_date?m.release_date.slice(0,4):'—',
           genre:m.genre_ids?.[0]||0,
+          genres:m.genre_ids||[],
           emoji:GENRE_EMOJI[m.genre_ids?.[0]]||'🎬',
           poster:IMG_BASE+m.poster_path,
           desc:m.overview ? m.overview.slice(0,120).trimEnd()+'…' : '',
@@ -793,10 +805,9 @@ function buildCard(m,isActive) {
       <img class="slide-img active" src="${m.poster}" alt="${m.title}" onerror="this.style.display='none'">
     </div>
     <div class="card-info">
-      <div class="card-genre">${m.emoji} ${m.year}</div>
       <div class="card-title">${m.title}</div>
       <div class="card-meta">⭐ ${m.rating} · ${m.year}</div>
-      <div class="card-desc">${m.desc}</div>
+      <div class="card-tags">${(m.genres.slice(0,3).map(g=>GENRE_NAMES[g]).filter(Boolean).map(g=>`<span class="card-tag">${g}</span>`)).join('')}</div>
     </div>`;
   return el;
 }

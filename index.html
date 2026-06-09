@@ -572,6 +572,14 @@ function initFirebase(cfg) {
 }
 
 // ════════════════════════════════════════════════════════
+//  LANDING STEPS
+// ════════════════════════════════════════════════════════
+function showStep(id) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════
 //  PILL SELECTION
 // ════════════════════════════════════════════════════════
 function setPill(type, val, el) {

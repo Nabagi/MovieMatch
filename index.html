@@ -769,64 +769,70 @@ function updateProg() {
   document.getElementById('progText').textContent=`${S.idx+1}/${S.movies.length}`;
 }
 
-// ── DRAG — attached to card-stack, no re-attaching per card ──
-let _drag = { active:false, sx:0, sy:0, cx:0 };
+// ── DRAG — self-contained per card, touch events stay on originating element ──
+function initGlobalDrag() {} // no-op
 
-function initGlobalDrag() {
-  const stack = () => document.getElementById('cardStack');
-  const stampY = () => document.getElementById('stampYes');
-  const stampN = () => document.getElementById('stampNo');
-  const activeCard = () => document.querySelector('.mv-card.active');
+function attachDrag(card) {
+  let sx=0, sy=0, cx=0;
+  const stampY = document.getElementById('stampYes');
+  const stampN = document.getElementById('stampNo');
 
-  const onStart = e => {
-    const card = activeCard();
-    if(!card) return;
+  card.addEventListener('touchstart', e => {
     unlockAudio();
-    _drag.active = true;
-    _drag.cx = 0;
+    cx = 0;
     card.style.transition = 'none';
-    const p = e.touches ? e.touches[0] : e;
-    _drag.sx = p.clientX;
-    _drag.sy = p.clientY;
-  };
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+  }, {passive:true});
 
-  const onMove = e => {
-    if(!_drag.active) return;
-    const card = activeCard();
-    if(!card) return;
-    const p = e.touches ? e.touches[0] : e;
-    _drag.cx = p.clientX - _drag.sx;
-    const cy = (p.clientY - _drag.sy) * 0.3;
-    card.style.transform = `translateX(${_drag.cx}px) translateY(${cy}px) rotate(${_drag.cx * .08}deg)`;
+  card.addEventListener('touchmove', e => {
+    cx = e.touches[0].clientX - sx;
+    const cy = (e.touches[0].clientY - sy) * 0.3;
+    card.style.transform = `translateX(${cx}px) translateY(${cy}px) rotate(${cx*.08}deg)`;
     const t = 70;
-    if(_drag.cx > t)       { stampY().style.opacity = Math.min((_drag.cx-t)/60,1); stampN().style.opacity=0; }
-    else if(_drag.cx < -t) { stampN().style.opacity = Math.min((-_drag.cx-t)/60,1); stampY().style.opacity=0; }
-    else                   { stampY().style.opacity=0; stampN().style.opacity=0; }
-  };
+    if(cx > t)       { stampY.style.opacity = Math.min((cx-t)/60,1); stampN.style.opacity=0; }
+    else if(cx < -t) { stampN.style.opacity = Math.min((-cx-t)/60,1); stampY.style.opacity=0; }
+    else             { stampY.style.opacity=0; stampN.style.opacity=0; }
+  }, {passive:true});
 
-  const onEnd = e => {
-    if(!_drag.active) return;
-    _drag.active = false;
-    stampY().style.opacity=0; stampN().style.opacity=0;
-    const card = activeCard();
-    if(!card) return;
+  card.addEventListener('touchend', () => {
+    stampY.style.opacity=0; stampN.style.opacity=0;
     card.style.transition = 'transform .3s ease';
-    if(_drag.cx > 80)       flyOut(card, 'right');
-    else if(_drag.cx < -80) flyOut(card, 'left');
-    else                    card.style.transform = '';
-    _drag.cx = 0;
-  };
+    if(cx > 80)       flyOut(card, 'right');
+    else if(cx < -80) flyOut(card, 'left');
+    else              card.style.transform = '';
+    cx = 0;
+  });
 
-  const el = document.getElementById('cardStack');
-  el.addEventListener('mousedown', onStart);
-  el.addEventListener('touchstart', onStart, {passive:true});
-  window.addEventListener('mousemove', onMove);
-  window.addEventListener('touchmove', onMove, {passive:true});
-  window.addEventListener('mouseup', onEnd);
-  window.addEventListener('touchend', onEnd);
+  // Mouse support for desktop testing
+  let mouseDown = false;
+  card.addEventListener('mousedown', e => {
+    unlockAudio();
+    mouseDown = true; cx = 0;
+    card.style.transition = 'none';
+    sx = e.clientX; sy = e.clientY;
+  });
+  window.addEventListener('mousemove', e => {
+    if(!mouseDown) return;
+    cx = e.clientX - sx;
+    const cy = (e.clientY - sy) * 0.3;
+    card.style.transform = `translateX(${cx}px) translateY(${cy}px) rotate(${cx*.08}deg)`;
+    const t = 70;
+    if(cx > t)       { stampY.style.opacity = Math.min((cx-t)/60,1); stampN.style.opacity=0; }
+    else if(cx < -t) { stampN.style.opacity = Math.min((-cx-t)/60,1); stampY.style.opacity=0; }
+    else             { stampY.style.opacity=0; stampN.style.opacity=0; }
+  });
+  window.addEventListener('mouseup', () => {
+    if(!mouseDown) return;
+    mouseDown = false;
+    stampY.style.opacity=0; stampN.style.opacity=0;
+    card.style.transition = 'transform .3s ease';
+    if(cx > 80)       flyOut(card, 'right');
+    else if(cx < -80) flyOut(card, 'left');
+    else              card.style.transform = '';
+    cx = 0;
+  });
 }
-
-function attachDrag(card) {} // no-op — drag handled by card-stack
 
 function flyOut(card,dir) {
   const x=dir==='right'?700:-700;

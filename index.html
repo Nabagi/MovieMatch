@@ -848,8 +848,6 @@ function swipeBtn(dir) {
 }
 
 function recordVote(id,liked) {
-  clearTimeout(trailerTimeout);
-
   S.myVotes[id]=liked;
   S.idx++;
   setTimeout(renderCards,80);

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MovieMatch">
 <title>MovieMatch</title>
-<!-- version: online-multiplayer-2-8 + maybe + robust-results 2026-06-12 -->
+<!-- version: online-multiplayer-2-8 + maybe + accounts + robust-results 2026-06-12 -->
 <!-- Firebase-room version: online rooms no longer rely on PeerJS/WebRTC. -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
@@ -320,6 +320,16 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   opacity:0;transition:opacity .6s ease}
 .slide-img.active{opacity:1}
 
+
+/* ── ACCOUNT ── */
+.auth-box{width:100%;background:rgba(255,255,255,.035);border:1px solid var(--border);border-radius:16px;padding:14px;margin:6px 0 16px;display:flex;flex-direction:column;gap:10px}
+.auth-status{font-size:12px;color:var(--muted);line-height:1.5;text-align:center}
+.auth-name{color:var(--text);font-weight:600}
+.auth-actions{display:flex;gap:8px;width:100%}
+.auth-actions .btn{padding:10px;font-size:13px}
+.auth-mini{font-size:11px;color:var(--muted);text-align:center;line-height:1.5}
+.auth-link{background:none;border:none;color:var(--accent2);font-family:'DM Sans';font-size:12px;cursor:pointer;padding:2px;text-decoration:underline;text-underline-offset:3px}
+
 /* scrollbar */
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
@@ -337,10 +347,34 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   <div class="step active" id="stepHome">
     <div class="logo">MovieMatch</div>
     <div class="tagline">Swipe together · Watch together</div>
+    <div class="auth-box" id="authBox">
+      <div class="auth-status" id="authStatus">Continue as guest, or sign in to save your name.</div>
+      <div class="auth-actions" id="authActions">
+        <button class="btn btn-secondary" onclick="showAuth('login')">Log In</button>
+        <button class="btn btn-primary" onclick="showAuth('signup')">Create Account</button>
+      </div>
+    </div>
     <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:8px">
       <button class="big-btn big-btn-start" onclick="showStep('stepCreate')">🎬 Start a Room</button>
       <button class="big-btn big-btn-join" onclick="showStep('stepJoin')">🔗 Join a Room</button>
       <button class="big-btn big-btn-local" onclick="showStep('stepLocal')">📱 Local Game</button>
+    </div>
+  </div>
+
+  <!-- STEP: ACCOUNT -->
+  <div class="step" id="stepAuth">
+    <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:14px">
+      <div class="step-title" id="authTitle">Log In</div>
+      <input type="text" id="authName" placeholder="Your name" maxlength="20"/>
+      <input type="email" id="authEmail" placeholder="Email" autocomplete="email"/>
+      <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" minlength="6"/>
+      <div class="err" id="authErr"></div>
+      <button class="btn btn-primary" id="authSubmit" onclick="submitAuth()">Log In</button>
+      <button class="btn btn-secondary" id="authSwitch" onclick="toggleAuthMode()">Create an account instead</button>
+      <button class="auth-link" onclick="resetPassword()">Forgot password?</button>
+      <div class="auth-mini">You can still play as guest. Login only saves your name for now.</div>
     </div>
   </div>
 
@@ -619,6 +653,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <div class="toast" id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>
 // ════════════════════════════════════════════════════════
@@ -664,7 +699,7 @@ const GENRE_BG = {
 //  STATE
 // ════════════════════════════════════════════════════════
 let S = {
-  fbApp:null, db:null,
+  fbApp:null, db:null, auth:null, authUser:null,
   myName:'', roomCode:'', isHost:false,
   online:false, playerId:'', partnerId:'',
   movies:[], idx:0, myVotes:{}, partnerVotes:null, allVotes:null,
@@ -709,6 +744,160 @@ function initFirebase(cfg) {
   }
   S.fbApp = firebase.initializeApp(cfg, `mm-${Date.now()}`);
   S.db = firebase.database(S.fbApp);
+  if (firebase.auth) {
+    S.auth = firebase.auth(S.fbApp);
+    initAuth();
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  ACCOUNTS — FIREBASE AUTH
+// ════════════════════════════════════════════════════════
+let authMode = 'login';
+let authReady = false;
+
+function initAuth() {
+  if(!S.auth) return;
+  try { S.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{}); } catch(e) {}
+  S.auth.onAuthStateChanged(user => {
+    S.authUser = user || null;
+    authReady = true;
+    applyAccountName();
+    updateAuthUI();
+  });
+}
+
+function accountName() {
+  const u = S.authUser;
+  if(!u) return '';
+  return (u.displayName || (u.email ? u.email.split('@')[0] : '') || '').trim();
+}
+
+function applyAccountName() {
+  const name = accountName();
+  if(!name) return;
+  ['createName','joinName'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el && !el.value.trim()) el.value = name.slice(0,20);
+  });
+}
+
+function updateAuthUI() {
+  const status = document.getElementById('authStatus');
+  const actions = document.getElementById('authActions');
+  if(!status || !actions) return;
+  if(S.authUser) {
+    const name = escapeHtml(accountName() || 'your account');
+    const email = escapeHtml(S.authUser.email || '');
+    status.innerHTML = `Signed in as <span class="auth-name">${name}</span>${email ? `<br>${email}` : ''}`;
+    actions.innerHTML = `<button class="btn btn-secondary" onclick="logoutAccount()">Log Out</button>`;
+  } else {
+    status.textContent = authReady ? 'Continue as guest, or sign in to save your name.' : 'Checking account...';
+    actions.innerHTML = `<button class="btn btn-secondary" onclick="showAuth('login')">Log In</button><button class="btn btn-primary" onclick="showAuth('signup')">Create Account</button>`;
+  }
+}
+
+function showAuth(mode = 'login') {
+  authMode = mode;
+  const title = document.getElementById('authTitle');
+  const submit = document.getElementById('authSubmit');
+  const switchBtn = document.getElementById('authSwitch');
+  const nameInput = document.getElementById('authName');
+  const passInput = document.getElementById('authPassword');
+  const err = document.getElementById('authErr');
+  if(err) { err.textContent = ''; err.classList.remove('show'); }
+  if(title) title.textContent = mode === 'signup' ? 'Create Account' : 'Log In';
+  if(submit) submit.textContent = mode === 'signup' ? 'Create Account' : 'Log In';
+  if(switchBtn) switchBtn.textContent = mode === 'signup' ? 'Log in instead' : 'Create an account instead';
+  if(nameInput) {
+    nameInput.style.display = mode === 'signup' ? 'block' : 'none';
+    if(mode === 'signup' && !nameInput.value.trim()) nameInput.value = document.getElementById('createName')?.value.trim() || document.getElementById('joinName')?.value.trim() || '';
+  }
+  if(passInput) passInput.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+  showStep('stepAuth');
+}
+
+function toggleAuthMode() {
+  showAuth(authMode === 'signup' ? 'login' : 'signup');
+}
+
+function showAuthError(msg) {
+  const err = document.getElementById('authErr');
+  if(err) { err.textContent = msg; err.classList.add('show'); }
+  else toast(msg);
+}
+
+function authErrorMessage(error) {
+  const code = error?.code || '';
+  if(code.includes('email-already-in-use')) return 'This email already has an account.';
+  if(code.includes('invalid-email')) return 'Enter a valid email.';
+  if(code.includes('weak-password')) return 'Password must be at least 6 characters.';
+  if(code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('user-not-found')) return 'Email or password is incorrect.';
+  if(code.includes('too-many-requests')) return 'Too many attempts. Try again later.';
+  if(code.includes('operation-not-allowed')) return 'Email/password login is not enabled in Firebase yet.';
+  return error?.message || 'Account error. Try again.';
+}
+
+async function submitAuth() {
+  if(!S.auth) { showAuthError('Firebase Auth is not loaded.'); return; }
+  const name = document.getElementById('authName')?.value.trim() || '';
+  const email = document.getElementById('authEmail')?.value.trim() || '';
+  const password = document.getElementById('authPassword')?.value || '';
+  if(!email) { showAuthError('Enter your email.'); return; }
+  if(!password || password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+  if(authMode === 'signup' && !name) { showAuthError('Enter your name.'); return; }
+
+  const btn = document.getElementById('authSubmit');
+  const oldText = btn ? btn.textContent : '';
+  if(btn) { btn.disabled = true; btn.textContent = authMode === 'signup' ? 'Creating...' : 'Logging in...'; }
+  try {
+    let cred;
+    if(authMode === 'signup') {
+      cred = await S.auth.createUserWithEmailAndPassword(email, password);
+      await cred.user.updateProfile({ displayName: name.slice(0,20) });
+      await cred.user.reload().catch(()=>{});
+      S.authUser = S.auth.currentUser || cred.user;
+      toast('Account created ✅');
+    } else {
+      cred = await S.auth.signInWithEmailAndPassword(email, password);
+      S.authUser = cred.user;
+      toast('Logged in ✅');
+    }
+    applyAccountName();
+    updateAuthUI();
+    showStep('stepHome');
+  } catch(e) {
+    console.error(e);
+    showAuthError(authErrorMessage(e));
+  } finally {
+    if(btn) { btn.disabled = false; btn.textContent = oldText || (authMode === 'signup' ? 'Create Account' : 'Log In'); }
+  }
+}
+
+async function logoutAccount() {
+  if(!S.auth) return;
+  try {
+    await S.auth.signOut();
+    S.authUser = null;
+    updateAuthUI();
+    toast('Logged out');
+  } catch(e) {
+    console.error(e);
+    toast('Could not log out.');
+  }
+}
+
+async function resetPassword() {
+  if(!S.auth) { showAuthError('Firebase Auth is not loaded.'); return; }
+  const email = document.getElementById('authEmail')?.value.trim() || '';
+  if(!email) { showAuthError('Enter your email first.'); return; }
+  try {
+    await S.auth.sendPasswordResetEmail(email);
+    toast('Password reset email sent');
+  } catch(e) {
+    console.error(e);
+    showAuthError(authErrorMessage(e));
+  }
 }
 
 // ════════════════════════════════════════════════════════
@@ -1051,8 +1240,11 @@ async function startOnlineGame() {
 //  CREATE ROOM
 // ════════════════════════════════════════════════════════
 async function createRoom() {
-  const name = document.getElementById('createName').value.trim();
-  if(!name){toast('Enter your name');return;}
+  let name = document.getElementById('createName').value.trim() || accountName();
+  if(!name){toast('Enter your name or log in');return;}
+  name = name.slice(0,20);
+  const createInput = document.getElementById('createName');
+  if(createInput && !createInput.value.trim()) createInput.value = name;
   S.myName=name; S.isHost=true; S.online=true; S.playerId='host'; S.partnerId='';
   S.myVotes={}; S.partnerVotes=null; S.allVotes=null; S.matchesShown=false; S.winnerShown=false;
   showLoad('Fetching movies...');
@@ -1092,9 +1284,12 @@ async function createRoom() {
 //  JOIN ROOM
 // ════════════════════════════════════════════════════════
 async function joinRoom() {
-  const name  = document.getElementById('joinName').value.trim();
+  let name  = document.getElementById('joinName').value.trim() || accountName();
   const code  = document.getElementById('joinCode').value.trim().toUpperCase();
-  if(!name){toast('Enter your name');return;}
+  if(!name){toast('Enter your name or log in');return;}
+  name = name.slice(0,20);
+  const joinInput = document.getElementById('joinName');
+  if(joinInput && !joinInput.value.trim()) joinInput.value = name;
   if(code.length<4){toast('Enter the room code');return;}
   S.myName=name; S.isHost=false; S.online=true; S.playerId=''; S.partnerId='';
   S.roomCode=code; S.myVotes={}; S.partnerVotes=null; S.allVotes=null; S.matchesShown=false; S.winnerShown=false;
@@ -2024,6 +2219,7 @@ function playAgain(){
   document.getElementById('createName').value='';
   document.getElementById('joinName').value='';
   document.getElementById('joinCode').value='';
+  applyAccountName();
   try { history.replaceState({}, '', location.pathname); } catch(e) {}
   showStep('stepHome');
   show('landingScreen');

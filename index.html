@@ -591,8 +591,6 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 // ════════════════════════════════════════════════════════
 //  CREDENTIALS (hardcoded)
 // ════════════════════════════════════════════════════════
-const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI3ZmZkZDUxNmViYzI5OTI2ZWUxNDMxMTk3MDQ4ODk2ZSIsIm5iZiI6MTc3OTM5MzIwMy44ODEsInN1YiI6IjZhMGY2MmIzOThjMzY2NTdjNTAwMWZmYSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.UIZRmaauJ_c1vbscXqMYyQwZtuyfhpt1sho0b0eBh20';
-
 const FB_CONFIG = {
   apiKey: "AIzaSyCHvQFCWVQ-sJR4rIXoWt3Id1qjcUL5DWI",
   authDomain: "moviematch-ff115.firebaseapp.com",
@@ -607,7 +605,7 @@ const FB_CONFIG = {
 // ════════════════════════════════════════════════════════
 //  CONSTANTS
 // ════════════════════════════════════════════════════════
-const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_BASE = '/.netlify/functions/tmdb';
 const IMG_BASE  = 'https://image.tmdb.org/t/p/w500';
 const MOVIE_COUNT = 30;
 
@@ -700,10 +698,11 @@ function setPill(type, val, el) {
 //  TMDB FETCH
 // ════════════════════════════════════════════════════════
 async function tmdb(path) {
-  const r = await fetch(`${TMDB_BASE}${path}`,{
-    headers:{Authorization:`Bearer ${TMDB_TOKEN}`}
-  });
-  if(!r.ok) throw new Error('TMDB '+r.status);
+  const r = await fetch(`${TMDB_BASE}?path=${encodeURIComponent(path)}`);
+  if(!r.ok) {
+    const details = await r.text().catch(() => '');
+    throw new Error(`TMDB ${r.status} ${details}`);
+  }
   return r.json();
 }
 

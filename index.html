@@ -88,6 +88,12 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .big-btn-join{background:var(--surface);border:1px solid var(--border);color:var(--text)}
 .big-btn-local{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff}
 .big-btn:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3)}
+.player-count-btn{padding:18px 8px;border:1px solid var(--border);border-radius:14px;
+  background:var(--card);color:var(--text);font-family:'Bebas Neue';font-size:28px;
+  cursor:pointer;transition:all .2s;letter-spacing:2px}
+.player-count-btn:hover,.player-count-btn.sel{background:rgba(230,60,100,.15);
+  border-color:var(--accent);color:var(--text)}
+
 .local-player-row{display:flex;align-items:center;gap:8px}
 .local-player-row input{flex:1}
 .local-remove{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;flex-shrink:0}
@@ -357,23 +363,40 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     </div>
   </div>
 
-  <!-- STEP: LOCAL -->
+  <!-- STEP: LOCAL — pick player count -->
   <div class="step" id="stepLocal">
     <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
     <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
     <div style="width:100%;display:flex;flex-direction:column;gap:14px">
-
-      <div class="step-title">Players</div>
-      <div id="localPlayerList" style="display:flex;flex-direction:column;gap:8px">
-        <div class="local-player-row">
-          <input type="text" placeholder="Player 1 name" maxlength="20" class="local-name-input"/>
-        </div>
-        <div class="local-player-row">
-          <input type="text" placeholder="Player 2 name" maxlength="20" class="local-name-input"/>
-        </div>
+      <div class="step-title">How many players?</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <button class="player-count-btn" onclick="selectPlayerCount(2)">2</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(3)">3</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(4)">4</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(5)">5</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(6)">6</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(7)">7</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(8)">8</button>
       </div>
-      <button class="btn btn-secondary" style="padding:10px" onclick="addLocalPlayer()">+ Add Player</button>
+    </div>
+  </div>
 
+  <!-- STEP: LOCAL NAMES -->
+  <div class="step" id="stepLocalNames">
+    <button class="back-btn" onclick="showStep('stepLocal')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:10px">
+      <div class="step-title">Enter Names</div>
+      <div id="localPlayerList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="btn btn-primary" style="margin-top:4px" onclick="showStep('stepLocalSettings')">Next →</button>
+    </div>
+  </div>
+
+  <!-- STEP: LOCAL SETTINGS -->
+  <div class="step" id="stepLocalSettings">
+    <button class="back-btn" onclick="showStep('stepLocalNames')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:14px">
       <div class="step-title">Category</div>
       <div class="pill-row" id="localGenrePills" style="flex-wrap:wrap">
         <div class="pill sel" onclick="setPillGroup('localGenrePills',0,this)">🎬 All</div>
@@ -387,15 +410,13 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
         <div class="pill" onclick="setPillGroup('localGenrePills',53,this)">😱 Thriller</div>
         <div class="pill" onclick="setPillGroup('localGenrePills',16,this)">✨ Animation</div>
       </div>
-
       <div class="step-title">How Many Movies?</div>
       <div class="pill-row" id="localCountPills">
         <div class="pill sel" onclick="setPillGroup('localCountPills',10,this)">10</div>
         <div class="pill" onclick="setPillGroup('localCountPills',20,this)">20</div>
         <div class="pill" onclick="setPillGroup('localCountPills',30,this)">30</div>
       </div>
-
-      <button class="btn btn-primary" style="margin-top:4px" onclick="startLocalGame()">Start Game →</button>
+      <button class="btn btn-primary" style="margin-top:4px" onclick="startLocalGame()">Let's Go 🎬</button>
     </div>
   </div>
 
@@ -1174,17 +1195,15 @@ function submitRanking() {
   if(!S.conn || !S.conn.open) {
     if(!partnerRanking) {
       // Player 1 just submitted — save and hand off
-      partnerRanking = ranks; // store as partnerRanking temporarily
-      myRankingSubmitted = false; // reset for player 2
-      myRanking = [...matchedMovies]; // reset ranking for player 2
-      // Show handoff
-      document.getElementById('handoffTitle').textContent = `Nice ${localGame.player1 || S.myName}!`;
-      document.getElementById('handoffSub').textContent = `Now pass to ${localGame.player2}, it\'s their turn to rank!`;
-      document.getElementById('handoffBtn').textContent = `I\'m ${localGame.player2} 🎬`;
-      // On handoff continue: player 2 ranks
-      document.getElementById('handoffBtn').onclick = () => {
-        startRanking(localGame.player2);
-      };
+      partnerRanking = ranks;
+      myRankingSubmitted = false;
+      myRanking = [...matchedMovies];
+      const p1 = localGame.players[0] || S.myName;
+      const p2 = localGame.players[1] || 'Player 2';
+      document.getElementById('handoffTitle').textContent = `Nice ${p1}!`;
+      document.getElementById('handoffSub').textContent = `Now pass to ${p2}, it's their turn to rank!`;
+      document.getElementById('handoffBtn').textContent = `I'm ${p2} 🎬`;
+      document.getElementById('handoffBtn').onclick = () => { startRanking(p2); };
       show('handoffScreen');
     } else {
       // Player 2 just submitted — compare and show winner
@@ -1433,16 +1452,20 @@ async function startSlideshow(movie) {
 // ════════════════════════════════════════════════════════
 let localCfg = { genre: 0, count: 10 };
 
-function addLocalPlayer() {
+function selectPlayerCount(count) {
+  // Build name inputs
   const list = document.getElementById('localPlayerList');
-  const count = list.querySelectorAll('.local-player-row').length + 1;
-  if(count > 8) { toast('Max 8 players'); return; }
-  const row = document.createElement('div');
-  row.className = 'local-player-row';
-  row.innerHTML = `<input type="text" placeholder="Player ${count} name" maxlength="20" class="local-name-input"/>
-    <button class="local-remove" onclick="this.parentElement.remove()">✕</button>`;
-  list.appendChild(row);
+  list.innerHTML = '';
+  for(let i = 0; i < count; i++) {
+    const row = document.createElement('div');
+    row.className = 'local-player-row';
+    row.innerHTML = `<input type="text" placeholder="Player ${i+1} name" maxlength="20" class="local-name-input"/>`;
+    list.appendChild(row);
+  }
+  showStep('stepLocalNames');
 }
+
+function addLocalPlayer() {} // replaced by selectPlayerCount
 
 function setPillGroup(groupId, val, el) {
   document.getElementById(groupId).querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
@@ -1460,6 +1483,7 @@ async function startLocalGame() {
   localGame.votes = names.map(() => ({}));
   localGame.currentTurn = 0;
   localGame.active = true;
+  S.conn = null; // ensure local mode is detected correctly
 
   const savedCfg = {...cfg};
   cfg.genre = localCfg.genre;

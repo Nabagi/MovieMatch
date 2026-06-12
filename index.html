@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#080810">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MovieMatch">
 <title>MovieMatch</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
@@ -11,8 +16,12 @@
   --accent:#e63c64; --accent2:#f5a623; --match:#00d4a0;
   --text:#f2f2f5; --muted:#55556a; --r:20px;
 }
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+html,body{height:100%;height:100dvh;overflow:hidden;
+  overscroll-behavior:none;position:fixed;width:100%;
+  touch-action:manipulation}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:radial-gradient(ellipse 60% 40% at 15% 15%,rgba(230,60,100,.07) 0%,transparent 100%),
@@ -20,7 +29,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 /* ── SCREENS ── */
 .screen{position:fixed;inset:0;z-index:1;display:none;flex-direction:column;
-  align-items:center;justify-content:flex-start;padding:0;overflow-y:auto}
+  align-items:center;justify-content:flex-start;overflow-y:auto;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+  -webkit-overflow-scrolling:touch}
 .screen.active{display:flex}
 .screen-inner{width:100%;max-width:400px;padding:40px 24px;display:flex;
   flex-direction:column;align-items:center;gap:0;min-height:100%;justify-content:center}
@@ -42,8 +54,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 /* ── INPUTS ── */
 input,textarea{width:100%;background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:13px 16px;color:var(--text);
-  font-family:'DM Sans';font-size:15px;outline:none;transition:border-color .2s;resize:vertical}
+  border-radius:12px;padding:14px 16px;color:var(--text);
+  font-family:'DM Sans';font-size:16px;outline:none;transition:border-color .2s;resize:vertical}
 input:focus,textarea:focus{border-color:var(--accent)}
 input::placeholder,textarea::placeholder{color:var(--muted)}
 
@@ -84,9 +96,10 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 /* ── PILL SELECTORS ── */
 .pill-label{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
 .pill-row{display:flex;flex-wrap:wrap;gap:7px}
-.pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);
-  background:var(--card);color:var(--muted);font-family:'DM Sans';font-size:12px;
-  cursor:pointer;transition:all .2s;user-select:none}
+.pill{padding:9px 16px;border-radius:20px;border:1px solid var(--border);
+  background:var(--card);color:var(--muted);font-family:'DM Sans';font-size:13px;
+  cursor:pointer;transition:all .2s;user-select:none;min-height:38px;
+  display:inline-flex;align-items:center}
 .pill.sel{background:rgba(230,60,100,.15);border-color:var(--accent);color:var(--text)}
 .pill:hover:not(.sel){border-color:rgba(255,255,255,.2);color:var(--text)}
 
@@ -105,7 +118,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 
 /* ── SWIPE SCREEN ── */
 #swipeScreen{padding:0}
-.swipe-layout{width:100%;max-width:360px;height:100vh;display:flex;
+.swipe-layout{width:100%;max-width:360px;height:100vh;height:100dvh;display:flex;
   flex-direction:column;align-items:center;padding:0 0 12px}
 .swipe-hdr{width:100%;display:flex;justify-content:space-between;
   align-items:center;padding:18px 4px 12px;flex-shrink:0}
@@ -120,7 +133,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   align-items:center;justify-content:center}
 .card-stack{position:relative;width:100%;height:100%;max-height:500px}
 
-.mv-card{position:absolute;inset:0;border-radius:22px;overflow:hidden;
+.mv-card{position:absolute;inset:0;border-radius:22px;overflow:hidden;touch-action:none;
   box-shadow:0 20px 60px rgba(0,0,0,.6);cursor:grab;user-select:none;background:var(--card)}
 .mv-card:active{cursor:grabbing}
 .mv-card.behind{transform:scale(.93) translateY(18px);z-index:0;pointer-events:none}

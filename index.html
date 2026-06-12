@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#080810">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MovieMatch">
+<title>MovieMatch</title>
+<!-- Firebase-room version: online rooms no longer rely on PeerJS/WebRTC. -->
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080810; --surface:#10101c; --card:#16162a; --border:rgba(255,255,255,.07);
+  --accent:#e63c64; --accent2:#f5a623; --match:#00d4a0;
+  --text:#f2f2f5; --muted:#55556a; --r:20px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+html,body{height:100%;height:100dvh;overflow:hidden;
+  overscroll-behavior:none;position:fixed;width:100%;
+  touch-action:manipulation}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 60% 40% at 15% 15%,rgba(230,60,100,.07) 0%,transparent 100%),
+             radial-gradient(ellipse 60% 40% at 85% 85%,rgba(245,166,35,.05) 0%,transparent 100%)}
+
+/* ── SCREENS ── */
+.screen{position:fixed;inset:0;z-index:1;display:none;flex-direction:column;
+  align-items:center;justify-content:flex-start;overflow-y:auto;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+  -webkit-overflow-scrolling:touch}
+.screen.active{display:flex}
+.screen-inner{width:100%;max-width:400px;padding:40px 24px;display:flex;
+  flex-direction:column;align-items:center;gap:0;min-height:100%;justify-content:center}
+
+/* ── LOGO ── */
+.logo{font-family:'Bebas Neue';font-size:clamp(56px,14vw,88px);letter-spacing:5px;line-height:1;
+  background:linear-gradient(135deg,#e63c64,#f5a623);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-align:center}
+.tagline{color:var(--muted);font-size:11px;letter-spacing:3px;text-transform:uppercase;
+  margin-top:4px;margin-bottom:32px;text-align:center}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:24px;width:100%;display:flex;flex-direction:column;gap:12px}
+.card+.card{margin-top:12px}
+.card h3{font-family:'Bebas Neue';font-size:18px;letter-spacing:2px}
+.card p{font-size:13px;color:var(--muted);line-height:1.65}
+
+/* ── INPUTS ── */
+input,textarea{width:100%;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;color:var(--text);
+  font-family:'DM Sans';font-size:16px;outline:none;transition:border-color .2s;resize:vertical}
+input:focus,textarea:focus{border-color:var(--accent)}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+
+/* ── BUTTONS ── */
+.btn{width:100%;padding:14px;border:none;border-radius:13px;
+  font-family:'DM Sans';font-size:15px;font-weight:500;cursor:pointer;
+  transition:all .2s;letter-spacing:.3px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#ff6b35);color:#fff}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(230,60,100,.35)}
+.btn-secondary{background:var(--card);border:1px solid var(--border);color:var(--text)}
+.btn-secondary:hover{border-color:var(--accent)}
+.btn:active{transform:translateY(0)!important}
+.btn-sm{width:auto;padding:8px 16px;font-size:13px;border-radius:10px}
+
+.divider{display:flex;align-items:center;gap:12px;color:var(--muted);
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:4px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── ERROR ── */
+.err{color:var(--accent);font-size:12px;display:none}
+.err.show{display:block}
+
+/* ── LANDING STEPS ── */
+.step{display:none;flex-direction:column;align-items:center;width:100%;gap:16px}
+.step.active{display:flex}
+.big-btn{width:100%;padding:22px 20px;border:none;border-radius:20px;
+  font-family:'Bebas Neue';font-size:28px;letter-spacing:3px;cursor:pointer;
+  transition:all .25s;text-align:center}
+.big-btn-start{background:linear-gradient(135deg,var(--accent),#ff6b35);color:#fff}
+.big-btn-join{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.big-btn-local{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff}
+.big-btn:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3)}
+.player-count-btn{padding:18px 8px;border:1px solid var(--border);border-radius:14px;
+  background:var(--card);color:var(--text);font-family:'Bebas Neue';font-size:28px;
+  cursor:pointer;transition:all .2s;letter-spacing:2px}
+.player-count-btn:hover,.player-count-btn.sel{background:rgba(230,60,100,.15);
+  border-color:var(--accent);color:var(--text)}
+
+.local-player-row{display:flex;align-items:center;gap:8px}
+.local-player-row input{flex:1}
+.local-remove{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;flex-shrink:0}
+
+.back-btn{background:none;border:none;color:var(--muted);font-family:'DM Sans';
+  font-size:13px;cursor:pointer;padding:4px 0;align-self:flex-start}
+.back-btn:hover{color:var(--text)}
+.step-title{font-family:'Bebas Neue';font-size:32px;letter-spacing:3px;
+  color:var(--text);align-self:flex-start}
+
+/* ── PILL SELECTORS ── */
+.pill-label{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+.pill-row{display:flex;flex-wrap:wrap;gap:7px}
+.pill{padding:9px 16px;border-radius:20px;border:1px solid var(--border);
+  background:var(--card);color:var(--muted);font-family:'DM Sans';font-size:13px;
+  cursor:pointer;transition:all .2s;user-select:none;min-height:38px;
+  display:inline-flex;align-items:center}
+.pill.sel{background:rgba(230,60,100,.15);border-color:var(--accent);color:var(--text)}
+.pill:hover:not(.sel){border-color:rgba(255,255,255,.2);color:var(--text)}
+
+/* ── WAITING ── */
+.wait-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:24px;padding:40px 32px;width:100%;max-width:340px;text-align:center}
+.code-label{font-size:11px;color:var(--muted);letter-spacing:3px;text-transform:uppercase}
+.room-code{font-family:'Bebas Neue';font-size:64px;letter-spacing:14px;color:var(--accent2);margin:12px 0 4px}
+.copy-btn{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);
+  border-radius:8px;padding:6px 14px;color:var(--accent2);
+  font-family:'DM Sans';font-size:12px;cursor:pointer;transition:background .2s;display:inline-block}
+.copy-btn:hover{background:rgba(245,166,35,.2)}
+.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--accent);margin-right:8px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+/* ── SWIPE SCREEN ── */
+#swipeScreen{padding:0}
+.swipe-layout{width:100%;max-width:360px;height:100vh;height:100dvh;display:flex;
+  flex-direction:column;align-items:center;padding:0 0 12px}
+.swipe-hdr{width:100%;display:flex;justify-content:space-between;
+  align-items:center;padding:18px 4px 12px;flex-shrink:0}
+.logo-sm{font-family:'Bebas Neue';font-size:24px;letter-spacing:2px;
+  background:linear-gradient(135deg,#e63c64,#f5a623);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.badge{background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:4px 12px;font-size:12px;color:var(--accent2)}
+.prog{font-size:12px;color:var(--muted)}
+
+.card-area{position:relative;width:100%;flex:1;min-height:0;display:flex;
+  align-items:center;justify-content:center}
+.card-stack{position:relative;width:100%;height:100%;max-height:500px}
+
+.mv-card{position:absolute;inset:0;border-radius:22px;overflow:hidden;touch-action:none;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);cursor:grab;user-select:none;background:var(--card)}
+.mv-card:active{cursor:grabbing}
+.mv-card.behind{transform:scale(.93) translateY(18px);z-index:0;pointer-events:none}
+.mv-card.active{z-index:10}
+
+.poster{width:100%;height:100%;object-fit:cover;display:block;background:var(--card)}
+.poster-fallback{width:100%;height:100%;display:flex;align-items:center;
+  justify-content:center;font-size:80px}
+.card-info{position:absolute;bottom:0;left:0;right:0;
+  padding:80px 18px 18px;
+  background:linear-gradient(transparent,rgba(0,0,0,.97));z-index:5}
+.card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.card-tag{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;padding:3px 10px;font-size:10px;color:rgba(255,255,255,.7);
+  letter-spacing:.5px;white-space:nowrap}
+.card-genre{display:inline-block;background:rgba(230,60,100,.2);
+  border:1px solid rgba(230,60,100,.35);border-radius:20px;
+  padding:3px 10px;font-size:10px;color:var(--accent);
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.card-title{font-family:'Bebas Neue';font-size:26px;letter-spacing:1px;line-height:1.1}
+.card-meta{font-size:11px;color:rgba(255,255,255,.45);margin:4px 0 6px;letter-spacing:.5px}
+.card-desc{font-size:12px;color:rgba(255,255,255,.45);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+.stamp{position:absolute;top:26px;padding:7px 16px;font-family:'Bebas Neue';
+  font-size:34px;letter-spacing:3px;border-radius:8px;
+  opacity:0;transition:opacity .1s;pointer-events:none;z-index:20}
+.stamp-yes{left:14px;color:#00d4a0;border:3px solid #00d4a0;transform:rotate(-15deg)}
+.stamp-no{right:14px;color:var(--accent);border:3px solid var(--accent);transform:rotate(15deg)}
+
+.act-row{display:flex;gap:20px;align-items:center;padding:12px 0 8px;flex-shrink:0}
+.act-btn{border-radius:50%;border:none;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;font-size:26px;
+  transition:all .2s;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.act-no{width:58px;height:58px;background:var(--surface);border:2px solid var(--accent)}
+.act-no:hover{background:var(--accent);transform:scale(1.1)}
+.act-yes{width:72px;height:72px;background:var(--surface);border:2px solid var(--match);font-size:32px}
+.act-yes:hover{background:var(--match);transform:scale(1.1)}
+.hint{font-size:11px;color:var(--muted);letter-spacing:1px;flex-shrink:0;padding-bottom:4px}
+
+/* ── DONE WAIT ── */
+.done-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:24px;padding:40px 32px;max-width:320px;text-align:center}
+.done-title{font-family:'Bebas Neue';font-size:40px;letter-spacing:3px;margin-bottom:10px}
+
+/* ── MATCHES ── */
+#matchScreen{overflow-y:auto}
+.match-wrap{width:100%;max-width:400px;padding:40px 24px 60px;
+  display:flex;flex-direction:column;align-items:center}
+.match-banner{font-family:'Bebas Neue';font-size:clamp(44px,13vw,78px);letter-spacing:5px;
+  background:linear-gradient(135deg,var(--match),#00b8ff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-align:center;animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.match-sub{text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:24px;margin-top:4px}
+.match-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;width:100%}
+.match-item{background:var(--card);border:1px solid rgba(0,212,160,.15);
+  border-radius:16px;padding:12px 16px;display:flex;align-items:flex-start;gap:14px;
+  animation:slideUp .4s ease both}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.match-poster{width:52px;height:74px;border-radius:8px;object-fit:cover;
+  background:var(--surface);flex-shrink:0}
+.match-emoji-box{width:52px;height:74px;border-radius:8px;background:var(--surface);
+  display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0}
+.match-title{font-family:'Bebas Neue';font-size:17px;letter-spacing:.5px;color:var(--match)}
+.match-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.match-desc{font-size:12px;color:rgba(255,255,255,.35);margin-top:5px;line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.no-match{text-align:center;color:var(--muted);padding:32px;font-size:15px;font-style:italic}
+
+/* ── LOADING ── */
+.overlay{position:fixed;inset:0;z-index:100;background:rgba(8,8,16,.85);
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.overlay.show{display:flex}
+.spinner{width:38px;height:38px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-txt{font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:rgba(22,22,42,.97);border:1px solid var(--border);
+  border-radius:12px;padding:10px 20px;font-size:14px;z-index:200;
+  white-space:nowrap;transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+
+/* ── MODE BUTTONS ── */
+.mode-row{display:flex;gap:10px;width:100%;margin-top:4px}
+.mode-btn{flex:1;padding:14px 10px;border:none;border-radius:13px;font-family:'DM Sans';
+  font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;text-align:center;line-height:1.4}
+.mode-rank{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff}
+.mode-rand{background:linear-gradient(135deg,var(--accent2),#ff6b35);color:#fff}
+.mode-btn:hover{transform:translateY(-2px);opacity:.9}
+
+/* ── RANK SCREEN ── */
+.rank-wrap{width:100%;max-width:400px;padding:28px 24px 60px;display:flex;flex-direction:column;align-items:center}
+.rank-title{font-family:'Bebas Neue';font-size:42px;letter-spacing:4px;
+  background:linear-gradient(135deg,#7c3aed,#a78bfa);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
+.rank-sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;text-align:center}
+.rank-list{display:flex;flex-direction:column;gap:8px;width:100%;margin-bottom:20px}
+.rank-item{background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:10px 12px;display:flex;align-items:center;gap:12px;transition:all .2s}
+.rank-num{font-family:'Bebas Neue';font-size:22px;color:var(--accent2);width:24px;text-align:center;flex-shrink:0}
+.rank-poster{width:38px;height:54px;border-radius:6px;object-fit:cover;background:var(--surface);flex-shrink:0}
+.rank-info{flex:1;min-width:0}
+.rank-name{font-family:'Bebas Neue';font-size:15px;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-meta{font-size:11px;color:var(--muted);margin-top:1px}
+.rank-arrows{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
+.rank-arr{background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  width:28px;height:24px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:11px;transition:all .15s;color:var(--text)}
+.rank-arr:hover{border-color:var(--accent);color:var(--accent)}
+.rank-arr:disabled{opacity:.2;cursor:default}
+
+/* ── RANK WAIT ── */
+.rank-wait-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:24px;padding:40px 32px;max-width:320px;text-align:center}
+
+/* ── WINNER SCREEN ── */
+.winner-wrap{width:100%;max-width:400px;padding:40px 24px 60px;display:flex;flex-direction:column;align-items:center}
+.winner-banner{font-family:'Bebas Neue';font-size:clamp(36px,11vw,64px);letter-spacing:4px;text-align:center;
+  background:linear-gradient(135deg,var(--accent2),#ff6b35);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:pop .5s cubic-bezier(.34,1.56,.64,1);margin-bottom:6px}
+.winner-sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;text-align:center}
+.winner-card{background:var(--card);border:2px solid rgba(245,166,35,.3);border-radius:20px;
+  overflow:hidden;width:100%;max-width:300px;box-shadow:0 20px 60px rgba(0,0,0,.5);
+  animation:slideUp .5s ease both;margin-bottom:24px}
+.winner-poster{width:100%;aspect-ratio:2/3;object-fit:cover;display:block}
+.winner-poster-fallback{width:100%;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;font-size:80px;background:var(--surface)}
+.winner-info{padding:16px}
+.winner-title{font-family:'Bebas Neue';font-size:24px;letter-spacing:1px;color:var(--accent2)}
+.winner-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.winner-desc{font-size:12px;color:rgba(255,255,255,.45);margin-top:8px;line-height:1.5}
+
+/* ── MUSIC INDICATOR ── */
+.music-bar{position:absolute;top:14px;right:14px;z-index:20;
+  display:flex;align-items:flex-end;gap:2px;height:18px;opacity:0;
+  transition:opacity .4s}
+.music-bar.show{opacity:1}
+.music-bar span{display:block;width:3px;background:rgba(255,255,255,.7);
+  border-radius:2px;animation:eq 1s ease-in-out infinite}
+.music-bar span:nth-child(1){height:6px;animation-delay:0s}
+.music-bar span:nth-child(2){height:12px;animation-delay:.2s}
+.music-bar span:nth-child(3){height:8px;animation-delay:.1s}
+.music-bar span:nth-child(4){height:14px;animation-delay:.3s}
+.music-bar span:nth-child(5){height:6px;animation-delay:.15s}
+@keyframes eq{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.3)}}
+
+/* ── TRAILER OVERLAY ── */
+.slide-wrap{position:absolute;inset:0;border-radius:22px;overflow:hidden;z-index:1;pointer-events:none}
+.slide-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .6s ease}
+.slide-img.active{opacity:1}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- LANDING                                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="screen" id="landingScreen">
+<div class="screen-inner">
+
+  <!-- STEP: HOME -->
+  <div class="step active" id="stepHome">
+    <div class="logo">MovieMatch</div>
+    <div class="tagline">Swipe together · Watch together</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:8px">
+      <button class="big-btn big-btn-start" onclick="showStep('stepCreate')">🎬 Start a Room</button>
+      <button class="big-btn big-btn-join" onclick="showStep('stepJoin')">🔗 Join a Room</button>
+      <button class="big-btn big-btn-local" onclick="showStep('stepLocal')">📱 Local Game</button>
+    </div>
+  </div>
+
+  <!-- STEP: CREATE -->
+  <div class="step" id="stepCreate">
+    <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:14px">
+      <div class="step-title">Your Name</div>
+      <input type="text" id="createName" placeholder="Enter your name" maxlength="20"/>
+
+      <div class="step-title">Category</div>
+      <div class="pill-row" id="genrePills" style="flex-wrap:wrap">
+        <div class="pill sel" onclick="setPill('genre',0,this)">🎬 All</div>
+        <div class="pill" onclick="setPill('genre',28,this)">⚔️ Action</div>
+        <div class="pill" onclick="setPill('genre',35,this)">😂 Comedy</div>
+        <div class="pill" onclick="setPill('genre',27,this)">👻 Horror</div>
+        <div class="pill" onclick="setPill('genre',18,this)">🎭 Drama</div>
+        <div class="pill" onclick="setPill('genre',878,this)">🚀 Sci-Fi</div>
+        <div class="pill" onclick="setPill('genre',10749,this)">💕 Romance</div>
+        <div class="pill" onclick="setPill('genre',14,this)">🧙 Fantasy</div>
+        <div class="pill" onclick="setPill('genre',53,this)">😱 Thriller</div>
+        <div class="pill" onclick="setPill('genre',16,this)">✨ Animation</div>
+      </div>
+
+      <div class="step-title">How Many Movies?</div>
+      <div class="pill-row" id="countPills">
+        <div class="pill sel" onclick="setPill('count',10,this)">10</div>
+        <div class="pill" onclick="setPill('count',20,this)">20</div>
+        <div class="pill" onclick="setPill('count',30,this)">30</div>
+        <div class="pill" onclick="setPill('count',40,this)">40</div>
+        <div class="pill" onclick="setPill('count',50,this)">50</div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:4px" onclick="createRoom()">Create Room →</button>
+    </div>
+  </div>
+
+  <!-- STEP: LOCAL — pick player count -->
+  <div class="step" id="stepLocal">
+    <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:14px">
+      <div class="step-title">How many players?</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <button class="player-count-btn" onclick="selectPlayerCount(2)">2</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(3)">3</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(4)">4</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(5)">5</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(6)">6</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(7)">7</button>
+        <button class="player-count-btn" onclick="selectPlayerCount(8)">8</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP: LOCAL NAMES -->
+  <div class="step" id="stepLocalNames">
+    <button class="back-btn" onclick="showStep('stepLocal')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:10px">
+      <div class="step-title">Enter Names</div>
+      <div id="localPlayerList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="btn btn-primary" style="margin-top:4px" onclick="showStep('stepLocalSettings')">Next →</button>
+    </div>
+  </div>
+
+  <!-- STEP: LOCAL SETTINGS -->
+  <div class="step" id="stepLocalSettings">
+    <button class="back-btn" onclick="showStep('stepLocalNames')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:14px">
+      <div class="step-title">Category</div>
+      <div class="pill-row" id="localGenrePills" style="flex-wrap:wrap">
+        <div class="pill sel" onclick="setPillGroup('localGenrePills',0,this)">🎬 All</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',28,this)">⚔️ Action</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',35,this)">😂 Comedy</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',27,this)">👻 Horror</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',18,this)">🎭 Drama</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',878,this)">🚀 Sci-Fi</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',10749,this)">💕 Romance</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',14,this)">🧙 Fantasy</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',53,this)">😱 Thriller</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',16,this)">✨ Animation</div>
+      </div>
+      <div class="step-title">How Many Movies?</div>
+      <div class="pill-row" id="localCountPills">
+        <div class="pill sel" onclick="setPillGroup('localCountPills',10,this)">10</div>
+        <div class="pill" onclick="setPillGroup('localCountPills',20,this)">20</div>
+        <div class="pill" onclick="setPillGroup('localCountPills',30,this)">30</div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:4px" onclick="startLocalGame()">Let's Go 🎬</button>
+    </div>
+  </div>
+
+  <!-- STEP: JOIN -->
+  <div class="step" id="stepJoin">
+    <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:14px">
+      <div class="step-title">Your Name</div>
+      <input type="text" id="joinName" placeholder="Enter your name" maxlength="20"/>
+      <div class="step-title">Room Code</div>
+      <input type="text" id="joinCode" placeholder="e.g. MOVIE" maxlength="6"
+        style="text-transform:uppercase;font-size:24px;letter-spacing:6px;text-align:center"
+        oninput="this.value=this.value.toUpperCase()"/>
+      <div class="err" id="joinErr">Room not found or already started.</div>
+      <button class="btn btn-secondary" style="margin-top:4px" onclick="joinRoom()">Join Room →</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- WAITING                                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="screen" id="waitingScreen">
+<div class="screen-inner">
+  <div class="wait-card">
+    <div class="code-label">Room Code</div>
+    <div class="room-code" id="displayCode">----</div>
+    <button class="copy-btn" onclick="copyCode()">📋 Share Invite</button>
+    <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.65">
+      Share this invite with your partner.<br>
+      You'll both swipe the same movies independently.<br>
+      Matches reveal only when both are done.
+    </p>
+    <div style="margin-top:24px;font-size:13px;color:var(--muted)">
+      <span class="pulse"></span><span id="waitStatus">Waiting for partner...</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SWIPING                                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="screen" id="swipeScreen">
+<div class="swipe-layout">
+  <div class="swipe-hdr">
+    <div class="logo-sm">MovieMatch</div>
+    <div class="badge" id="myBadge">You</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="music-bar" id="musicBar"><span></span><span></span><span></span><span></span><span></span></div>
+      <button id="muteBtn" onclick="toggleMute()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px 8px;color:var(--muted);font-size:14px;cursor:pointer">🔊</button>
+      <div class="prog" id="progText">1/20</div>
+    </div>
+  </div>
+  <div class="card-area">
+    <div class="card-stack" id="cardStack">
+      <div class="stamp stamp-yes" id="stampYes">WATCH</div>
+      <div class="stamp stamp-no"  id="stampNo">SKIP</div>
+    </div>
+  </div>
+  <div class="act-row">
+    <button class="act-btn act-no"  onclick="swipeBtn('no')"  title="Skip">✕</button>
+    <button class="act-btn act-yes" onclick="swipeBtn('yes')" title="Watch it!">♥</button>
+  </div>
+  <div class="hint">Swipe right to watch · left to skip</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- DONE — WAITING FOR PARTNER                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="screen" id="doneWaitScreen">
+<div class="screen-inner">
+  <div class="done-card">
+    <div class="done-title">All Done! 🎬</div>
+    <p style="color:var(--muted);font-size:14px;line-height:1.6">
+      You've rated all the movies.<br>Waiting for your partner to finish...
+    </p>
+    <div style="margin-top:20px">
+      <span class="pulse"></span>
+      <span style="font-size:13px;color:var(--muted)">Waiting...</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- MATCHES                                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="screen" id="matchScreen">
+<div class="match-wrap">
+  <div class="match-banner">IT'S A<br>MATCH!</div>
+  <div class="match-sub" id="matchSub">You both said yes to these</div>
+  <div class="match-list" id="matchList"></div>
+  <div id="modeButtons" style="width:100%;display:none">
+    <div style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:10px">What's next?</div>
+    <div class="mode-waiting" style="display:none;font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px"><span class="pulse"></span>Waiting for partner's choice...</div>
+    <div class="mode-row">
+      <button class="mode-btn mode-rank" id="btnRank" onclick="chooseMode('rank')">🏆 Rank<br><span style="font-size:11px;opacity:.8">Pick together</span></button>
+      <button class="mode-btn mode-rand" id="btnRand" onclick="chooseMode('random')">🎲 Random<br><span style="font-size:11px;opacity:.8">Surprise us</span></button>
+    </div>
+  </div>
+  <button class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="playAgain()">Play Again</button>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- RANKING                                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="screen" id="rankScreen" style="overflow-y:auto">
+<div class="rank-wrap">
+  <div class="rank-title" id="rankTitle">RANK IT</div>
+  <div class="rank-sub" id="rankSub">Move your favourites to the top</div>
+  <div class="rank-list" id="rankList"></div>
+  <button class="btn btn-primary" style="width:100%" onclick="submitRanking()">Submit My Ranking ✓</button>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- RANK WAIT                                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="screen" id="rankWaitScreen">
+<div class="screen-inner">
+  <div class="rank-wait-card">
+    <div style="font-family:'Bebas Neue';font-size:36px;letter-spacing:3px;margin-bottom:10px">Almost...</div>
+    <p style="color:var(--muted);font-size:14px;line-height:1.6">Your ranking is in!<br>Waiting for your partner...</p>
+    <div style="margin-top:20px"><span class="pulse"></span><span style="font-size:13px;color:var(--muted)">Waiting...</span></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- WINNER                                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="screen" id="winnerScreen" style="overflow-y:auto">
+<div class="winner-wrap">
+  <div class="winner-banner" id="winnerBanner">TONIGHT'S<br>PICK!</div>
+  <div class="winner-sub" id="winnerSub">You're watching this</div>
+  <div class="winner-card" id="winnerCard"></div>
+  <button class="btn btn-secondary" style="width:100%" onclick="playAgain()">Play Again</button>
+</div>
+</div>
+
+<!-- HANDOFF SCREEN -->
+<div class="screen" id="handoffScreen">
+<div class="screen-inner">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:40px 32px;max-width:320px;text-align:center;width:100%">
+    <div style="font-size:48px;margin-bottom:16px">📱</div>
+    <div style="font-family:'Bebas Neue';font-size:36px;letter-spacing:3px;margin-bottom:8px" id="handoffTitle">Pass the phone!</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:24px" id="handoffSub">Hand the phone to your partner</div>
+    <button class="btn btn-primary" id="handoffBtn" onclick="continueLocalGame()">I'm ready 🎬</button>
+  </div>
+</div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <div class="load-txt" id="loadTxt">Loading...</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script>
+// ════════════════════════════════════════════════════════
+//  FIREBASE CONFIG (public client config; secure with database rules)
+// ════════════════════════════════════════════════════════
+const FB_CONFIG = {
+  apiKey: "AIzaSyCHvQFCWVQ-sJR4rIXoWt3Id1qjcUL5DWI",
+  authDomain: "moviematch-ff115.firebaseapp.com",
+  databaseURL: "https://moviematch-ff115-default-rtdb.firebaseio.com",
+  projectId: "moviematch-ff115",
+  storageBucket: "moviematch-ff115.firebasestorage.app",
+  messagingSenderId: "222388949042",
+  appId: "1:222388949042:web:61dd612c9553af9d5bac2b",
+  measurementId: "G-YEEMMHWPNG"
+};
+
+// ════════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════════
+const IMG_BASE  = 'https://image.tmdb.org/t/p/w500';
+const MOVIE_COUNT = 30;
+
+const GENRE_EMOJI = {
+  28:'⚔️',12:'🌍',16:'✨',35:'😂',80:'🔫',99:'🎥',18:'🎭',
+  10751:'👨‍👩‍👧',14:'🧙',36:'📜',27:'👻',10402:'🎵',9648:'🔍',
+  10749:'💕',878:'🚀',10770:'📺',53:'😱',10752:'🪖',37:'🤠'
+};
+
+const GENRE_NAMES = {
+  28:'Action',12:'Adventure',16:'Animation',35:'Comedy',80:'Crime',
+  99:'Documentary',18:'Drama',10751:'Family',14:'Fantasy',36:'History',
+  27:'Horror',10402:'Music',9648:'Mystery',10749:'Romance',878:'Sci-Fi',
+  53:'Thriller',10752:'War',37:'Western',10770:'TV Movie'
+};
+
+const GENRE_BG = {
+  28:'#1a0500',12:'#001a0a',16:'#00001a',35:'#1a1500',80:'#1a0000',
+  18:'#0a0a1a',27:'#0d0010',10749:'#1a000f',878:'#000d1a',53:'#0d0a00',
+  14:'#001208',9648:'#0a000a',10751:'#0a0a00'
+};
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let S = {
+  fbApp:null, db:null,
+  myName:'', roomCode:'', isHost:false,
+  online:false, playerId:'', partnerId:'',
+  movies:[], idx:0, myVotes:{}, partnerVotes:null,
+  roomRef:null, roomListener:null, lastRoomData:null,
+  matchesShown:false, winnerShown:false,
+  phase:'idle', // idle, waiting, swiping, done, matching, ranking
+};
+let cfg = { count: 10, genre: 0 };
+let localGame = { active:false, players:[], votes:[], currentTurn:0 };
+// ── AUDIO ──
+let currentAudio = null;
+let previewCache = {};
+let trailerCache = {};
+let matchedMovies = [];
+let myRanking = [];
+let partnerRanking = null;
+let myRankingSubmitted = false;
+let myModeChoice = null;
+let partnerModeChoice = null;
+
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  if (typeof firebase === 'undefined') {
+    document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;font-family:sans-serif;background:#080810;color:#f2f2f5;text-align:center;padding:24px">
+      <div style="font-size:48px">⚠️</div>
+      <div style="font-size:18px;font-weight:bold">Failed to load Firebase</div>
+      <div style="font-size:13px;color:#55556a;max-width:300px;line-height:1.6">The Firebase SDK could not be loaded. Make sure you're opening this file through a web server or browser, not as a local file. Try uploading to GitHub Pages or Netlify Drop.</div>
+    </div>`;
+    return;
+  }
+  initGlobalDrag();
+  initFirebase(FB_CONFIG);
+  show('landingScreen');
+  handleInitialRoomLink();
+});
+
+function initFirebase(cfg) {
+  if (S.fbApp) {
+    try { S.fbApp.delete(); } catch(e){}
+  }
+  S.fbApp = firebase.initializeApp(cfg, `mm-${Date.now()}`);
+  S.db = firebase.database(S.fbApp);
+}
+
+// ════════════════════════════════════════════════════════
+//  LANDING STEPS
+// ════════════════════════════════════════════════════════
+function showStep(id) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════
+//  PILL SELECTION
+// ════════════════════════════════════════════════════════
+function setPill(type, val, el) {
+  cfg[type === 'count' ? 'count' : 'genre'] = val;
+  const group = type === 'count' ? 'countPills' : 'genrePills';
+  document.getElementById(group).querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+// ════════════════════════════════════════════════════════
+//  TMDB FETCH
+// ════════════════════════════════════════════════════════
+async function tmdb(path) {
+  const r = await fetch(`/api/tmdb?path=${encodeURIComponent(path)}`);
+  if(!r.ok) throw new Error('TMDB '+r.status);
+  return r.json();
+}
+
+async function fetchMovies() {
+  const genreParam = cfg.genre ? `&with_genres=${cfg.genre}` : '';
+  // Use /discover for genre filtering (reliable), fall back to popular lists for "All"
+  const pages = [1, 2, 3, 4];
+  let requests = [];
+  if (cfg.genre) {
+    // discover/movie fully respects with_genres
+    pages.forEach(p => requests.push(tmdb(`/discover/movie?sort_by=popularity.desc&page=${p}${genreParam}&vote_count.gte=100`)));
+    pages.forEach(p => requests.push(tmdb(`/discover/movie?sort_by=vote_average.desc&page=${p}${genreParam}&vote_count.gte=200`)));
+  } else {
+    ['popular','top_rated','now_playing'].forEach(e =>
+      [1,2,3].forEach(p => requests.push(tmdb(`/movie/${e}?page=${p}`))));
+  }
+  const results = await Promise.all(requests.map(r => r.catch(() => ({results:[]}))));
+  const seen=new Set(); let all=[];
+  results.forEach(res => {
+    (res.results||[]).forEach(m=>{
+      // Client-side genre check as safety net
+      const hasGenre = cfg.genre ? (m.genre_ids||[]).includes(cfg.genre) : true;
+      if(!seen.has(m.id) && m.poster_path && m.overview && hasGenre){
+        seen.add(m.id);
+        all.push({
+          id:m.id, title:m.title,
+          year:m.release_date?m.release_date.slice(0,4):'—',
+          genre:m.genre_ids?.[0]||0,
+          genres:m.genre_ids||[],
+          emoji:GENRE_EMOJI[m.genre_ids?.[0]]||'🎬',
+          poster:IMG_BASE+m.poster_path,
+          desc:m.overview ? m.overview.slice(0,120).trimEnd()+'…' : '',
+          rating:m.vote_average?m.vote_average.toFixed(1):'—',
+        });
+      }
+    });
+  });
+  return shuffle(all).slice(0, cfg.count);
+}
+
+// ════════════════════════════════════════════════════════
+//  ONLINE ROOMS — FIREBASE ONLY (NO PEERJS)
+// ════════════════════════════════════════════════════════
+function handleInitialRoomLink() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const room = (params.get('room') || '').trim().toUpperCase();
+    if(room && /^[A-Z0-9]{4,6}$/.test(room)) {
+      showStep('stepJoin');
+      const input = document.getElementById('joinCode');
+      if(input) input.value = room;
+    }
+  } catch(e) {}
+}
+
+function getInviteLink(code = S.roomCode) {
+  const base = `${location.origin}${location.pathname}`;
+  return `${base}?room=${encodeURIComponent(code)}`;
+}
+
+function stopRoomListener() {
+  if(S.roomRef && S.roomListener) {
+    try { S.roomRef.off('value', S.roomListener); } catch(e) {}
+  }
+  S.roomListener = null;
+}
+
+function startRoomListener() {
+  if(!S.roomRef) return;
+  stopRoomListener();
+  S.roomListener = snap => onRoomUpdate(snap.val());
+  S.roomRef.on('value', S.roomListener);
+}
+
+async function createUniqueRoom(roomData) {
+  for(let i = 0; i < 8; i++) {
+    const code = genCode();
+    const ref = S.db.ref(`rooms/${code}`);
+    const result = await ref.transaction(current => current === null ? roomData : undefined);
+    if(result.committed) return { code, ref };
+  }
+  throw new Error('Could not create unique room code');
+}
+
+function partnerIdFor(id) {
+  return id === 'host' ? 'guest' : 'host';
+}
+
+function roomHasBothDone(room) {
+  return !!(room?.players?.host?.done && room?.players?.guest?.done && room?.votes?.host && room?.votes?.guest);
+}
+
+function deterministicChoice(a, b) {
+  if(a === b) return a;
+  const sum = [...S.roomCode].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  return sum % 2 === 0 ? 'rank' : 'random';
+}
+
+function deterministicIndex(max) {
+  if(!max) return 0;
+  const seed = `${S.roomCode}:${matchedMovies.map(m => m.id).join(',')}`;
+  let n = 0;
+  for(const ch of seed) n = (n * 31 + ch.charCodeAt(0)) >>> 0;
+  return n % max;
+}
+
+function setModeWaitingUI(mode) {
+  const btnRank = document.getElementById('btnRank');
+  const btnRand = document.getElementById('btnRand');
+  if(btnRank) { btnRank.style.opacity = mode === 'rank' ? '1' : '0.35'; btnRank.disabled = true; }
+  if(btnRand) { btnRand.style.opacity = mode === 'random' ? '1' : '0.35'; btnRand.disabled = true; }
+  const label = document.querySelector('#modeButtons .mode-waiting');
+  if(label) label.style.display = 'block';
+}
+
+function onRoomUpdate(room) {
+  if(!S.online) return;
+  if(!room) {
+    if(S.phase !== 'idle') toast('Room closed. Start a new one.');
+    return;
+  }
+
+  S.lastRoomData = room;
+  if(room.movies && room.movies.length) S.movies = room.movies;
+  S.partnerId = partnerIdFor(S.playerId);
+
+  const host = room.players?.host;
+  const guest = room.players?.guest;
+
+  if(S.isHost && guest && room.status === 'waiting') {
+    S.roomRef.update({ status: 'playing' }).catch(()=>{});
+  }
+
+  if(S.isHost && guest && S.phase === 'waiting') {
+    const waitStatus = document.getElementById('waitStatus');
+    if(waitStatus) waitStatus.textContent = `${guest.name || 'Partner'} joined!`;
+    toast(`${guest.name || 'Partner'} joined! 🎬`);
+    setTimeout(() => { setupSwipe(); show('swipeScreen'); }, 500);
+  }
+
+  if(roomHasBothDone(room) && !S.matchesShown) {
+    S.partnerVotes = room.votes?.[S.partnerId] || {};
+    showMatches();
+  }
+
+  const modeHost = room.modeChoices?.host;
+  const modeGuest = room.modeChoices?.guest;
+  if(modeHost && modeGuest && !room.finalMode) {
+    const finalMode = deterministicChoice(modeHost, modeGuest);
+    S.roomRef.child('finalMode').transaction(current => current || finalMode).catch(()=>{});
+  }
+
+  if(room.finalMode && S.phase === 'matching' && !modeStarted) {
+    launchMode(room.finalMode);
+  }
+
+  const myRank = room.rankings?.[S.playerId];
+  const otherRank = room.rankings?.[S.partnerId];
+  if(myRank && otherRank && !S.winnerShown) {
+    partnerRanking = otherRank;
+    showWinner();
+  }
+
+  if(room.winner && !S.winnerShown) {
+    showWinnerMovie(room.winner.movie, room.winner.banner, room.winner.sub);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  CREATE ROOM
+// ════════════════════════════════════════════════════════
+async function createRoom() {
+  const name = document.getElementById('createName').value.trim();
+  if(!name){toast('Enter your name');return;}
+  S.myName=name; S.isHost=true; S.online=true; S.playerId='host'; S.partnerId='guest';
+  S.myVotes={}; S.partnerVotes=null; S.matchesShown=false; S.winnerShown=false;
+  showLoad('Fetching movies...');
+  try {
+    S.movies = await fetchMovies();
+    showLoad('Creating room...');
+    const roomData = {
+      hostName: name,
+      created: Date.now(),
+      status: 'waiting',
+      settings: { genre: cfg.genre, count: cfg.count },
+      movies: S.movies,
+      players: {
+        host: { name, joined: Date.now(), done: false }
+      }
+    };
+    const createdRoom = await createUniqueRoom(roomData);
+    S.roomCode = createdRoom.code;
+    S.roomRef = createdRoom.ref;
+    S.phase = 'waiting';
+    document.getElementById('displayCode').textContent = S.roomCode;
+    const waitStatus = document.getElementById('waitStatus');
+    if(waitStatus) waitStatus.textContent = 'Waiting for partner...';
+    startRoomListener();
+    hideLoad();
+    show('waitingScreen');
+  } catch(e) {
+    hideLoad();
+    toast('Error creating room. Try again.');
+    console.error(e);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  JOIN ROOM
+// ════════════════════════════════════════════════════════
+async function joinRoom() {
+  const name  = document.getElementById('joinName').value.trim();
+  const code  = document.getElementById('joinCode').value.trim().toUpperCase();
+  if(!name){toast('Enter your name');return;}
+  if(code.length<4){toast('Enter the room code');return;}
+  S.myName=name; S.isHost=false; S.online=true; S.playerId='guest'; S.partnerId='host';
+  S.roomCode=code; S.myVotes={}; S.partnerVotes=null; S.matchesShown=false; S.winnerShown=false;
+  showLoad('Finding room...');
+  document.getElementById('joinErr').classList.remove('show');
+  try {
+    const ref = S.db.ref(`rooms/${code}`);
+    const snap = await ref.get();
+    if(!snap.exists()){
+      hideLoad();
+      document.getElementById('joinErr').textContent='Room not found.';
+      document.getElementById('joinErr').classList.add('show');
+      return;
+    }
+    const roomData = snap.val();
+    if(roomData.players?.guest){
+      hideLoad();
+      document.getElementById('joinErr').textContent='Room is already full.';
+      document.getElementById('joinErr').classList.add('show');
+      return;
+    }
+    if(!roomData.movies || !roomData.movies.length){
+      hideLoad();
+      document.getElementById('joinErr').textContent='Room data is missing.';
+      document.getElementById('joinErr').classList.add('show');
+      return;
+    }
+    S.roomRef = ref;
+    S.movies = roomData.movies;
+    await ref.update({
+      status: 'playing',
+      'players/guest': { name, joined: Date.now(), done: false }
+    });
+    startRoomListener();
+    hideLoad();
+    setupSwipe();
+    show('swipeScreen');
+  } catch(e) {
+    hideLoad();
+    toast('Error joining room.');
+    console.error(e);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  SWIPE ENGINE
+// ════════════════════════════════════════════════════════
+function setupSwipe() {
+  S.phase='swiping';
+  S.idx=0;
+  document.getElementById('myBadge').textContent=S.myName;
+  renderCards();
+}
+
+function renderCards() {
+  const stack=document.getElementById('cardStack');
+  stack.querySelectorAll('.mv-card').forEach(c=>c.remove());
+  if(S.idx>=S.movies.length){finishSwiping();return;}
+  updateProg();
+  if(S.idx+1<S.movies.length) stack.appendChild(buildCard(S.movies[S.idx+1],false));
+  const active=buildCard(S.movies[S.idx],true);
+  stack.appendChild(active);
+  attachDrag(active);
+  const nextMovie = S.movies[S.idx+1] || null;
+  onCardChanged(S.movies[S.idx], nextMovie);
+  startSlideshow(S.movies[S.idx]);
+  if(nextMovie) prefetchBackdrops(nextMovie.id);
+}
+
+function buildCard(m,isActive) {
+  const el=document.createElement('div');
+  el.className=`mv-card ${isActive?'active':'behind'}`;
+  el.dataset.id=m.id;
+  const bg=GENRE_BG[m.genre]||'#10101c';
+  el.innerHTML=`
+    <div class="slide-wrap" id="slides_${m.id}">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:80px;background:${bg}">${m.emoji}</div>
+      <img class="slide-img active" src="${m.poster}" alt="${m.title}" onerror="this.style.display='none'">
+    </div>
+    <div class="card-info">
+      <div class="card-title">${m.title}</div>
+      <div class="card-meta">⭐ ${m.rating} · ${m.year}</div>
+      <div class="card-tags">${(m.genres.slice(0,3).map(g=>GENRE_NAMES[g]).filter(Boolean).map(g=>`<span class="card-tag">${g}</span>`)).join('')}</div>
+    </div>`;
+  return el;
+}
+
+function updateProg() {
+  document.getElementById('progText').textContent=`${S.idx+1}/${S.movies.length}`;
+}
+
+// ── DRAG — self-contained per card, touch events stay on originating element ──
+function initGlobalDrag() {} // no-op
+
+function attachDrag(card) {
+  let sx=0, sy=0, cx=0;
+  const stampY = document.getElementById('stampYes');
+  const stampN = document.getElementById('stampNo');
+
+  card.addEventListener('touchstart', e => {
+    unlockAudio();
+    cx = 0;
+    card.style.transition = 'none';
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+  }, {passive:true});
+
+  card.addEventListener('touchmove', e => {
+    cx = e.touches[0].clientX - sx;
+    const cy = (e.touches[0].clientY - sy) * 0.3;
+    card.style.transform = `translateX(${cx}px) translateY(${cy}px) rotate(${cx*.08}deg)`;
+    const t = 70;
+    if(cx > t)       { stampY.style.opacity = Math.min((cx-t)/60,1); stampN.style.opacity=0; }
+    else if(cx < -t) { stampN.style.opacity = Math.min((-cx-t)/60,1); stampY.style.opacity=0; }
+    else             { stampY.style.opacity=0; stampN.style.opacity=0; }
+  }, {passive:true});
+
+  card.addEventListener('touchend', () => {
+    stampY.style.opacity=0; stampN.style.opacity=0;
+    card.style.transition = 'transform .3s ease';
+    if(cx > 80)       flyOut(card, 'right');
+    else if(cx < -80) flyOut(card, 'left');
+    else              card.style.transform = '';
+    cx = 0;
+  });
+
+  // Mouse support for desktop testing
+  let mouseDown = false;
+  card.addEventListener('mousedown', e => {
+    unlockAudio();
+    mouseDown = true; cx = 0;
+    card.style.transition = 'none';
+    sx = e.clientX; sy = e.clientY;
+  });
+  window.addEventListener('mousemove', e => {
+    if(!mouseDown) return;
+    cx = e.clientX - sx;
+    const cy = (e.clientY - sy) * 0.3;
+    card.style.transform = `translateX(${cx}px) translateY(${cy}px) rotate(${cx*.08}deg)`;
+    const t = 70;
+    if(cx > t)       { stampY.style.opacity = Math.min((cx-t)/60,1); stampN.style.opacity=0; }
+    else if(cx < -t) { stampN.style.opacity = Math.min((-cx-t)/60,1); stampY.style.opacity=0; }
+    else             { stampY.style.opacity=0; stampN.style.opacity=0; }
+  });
+  window.addEventListener('mouseup', () => {
+    if(!mouseDown) return;
+    mouseDown = false;
+    stampY.style.opacity=0; stampN.style.opacity=0;
+    card.style.transition = 'transform .3s ease';
+    if(cx > 80)       flyOut(card, 'right');
+    else if(cx < -80) flyOut(card, 'left');
+    else              card.style.transform = '';
+    cx = 0;
+  });
+}
+
+function flyOut(card,dir) {
+  const x=dir==='right'?700:-700;
+  card.style.transform=`translateX(${x}px) rotate(${dir==='right'?30:-30}deg)`;
+  card.style.opacity='0';
+  const liked=dir==='right';
+  setTimeout(()=>recordVote(parseInt(card.dataset.id),liked),280);
+}
+
+function swipeBtn(dir) {
+  unlockAudio();
+  const c=document.querySelector('.mv-card.active');
+  if(c)flyOut(c,dir==='yes'?'right':'left');
+}
+
+function recordVote(id,liked) {
+  S.myVotes[id]=liked;
+  S.idx++;
+  setTimeout(renderCards,80);
+}
+
+// ════════════════════════════════════════════════════════
+//  FINISH & MATCHES
+// ════════════════════════════════════════════════════════
+function finishSwiping() {
+  if(localGame.active) { finishLocalTurn(); return; }
+  S.phase='done';
+  stopPreview();
+  clearInterval(slideshowTimer);
+
+  if(S.online && S.roomRef && S.playerId) {
+    const updates = {};
+    updates[`votes/${S.playerId}`] = S.myVotes;
+    updates[`players/${S.playerId}/done`] = true;
+    updates[`players/${S.playerId}/finished`] = Date.now();
+    S.roomRef.update(updates).catch(e => {
+      console.error(e);
+      toast('Could not save votes. Check connection.');
+    });
+    show('doneWaitScreen');
+    return;
+  }
+
+  if(S.partnerVotes) { showMatches(); return; }
+  show('doneWaitScreen');
+}
+
+function showMatches() {
+  S.matchesShown = true;
+  const pv=S.partnerVotes||{};
+  const matches=S.movies.filter(m=>S.myVotes[m.id]===true&&pv[m.id]===true);
+  const list=document.getElementById('matchList');
+  const sub=document.getElementById('matchSub');
+  list.innerHTML='';
+  const banner = document.querySelector('.match-banner');
+  if(!matches.length){
+    banner.style.background = 'linear-gradient(135deg,#e63c64,#ff6b35)';
+    banner.style.webkitBackgroundClip = 'text';
+    banner.innerHTML = 'NO<br>MATCH 😕';
+    sub.textContent='Very different taste this time!';
+    list.innerHTML='<div class="no-match">Try another round!</div>';
+  } else {
+    banner.style.background = 'linear-gradient(135deg,var(--match),#00b8ff)';
+    banner.style.webkitBackgroundClip = 'text';
+    banner.innerHTML = "IT'S A<br>MATCH!";
+    sub.textContent=matches.length===1?'You both want to watch':'You both said yes to these';
+    matches.forEach((m,i)=>{
+      const el=document.createElement('div');
+      el.className='match-item';
+      el.style.animationDelay=`${i*.1}s`;
+      el.innerHTML=`
+        <img class="match-poster" src="${m.poster}" alt="${m.title}"
+          onerror="this.outerHTML='<div class=\"match-emoji-box\">${m.emoji}</div>'">
+        <div>
+          <div class="match-title">${m.title}</div>
+          <div class="match-meta">⭐ ${m.rating} · ${m.year}</div>
+          <div class="match-desc">${m.desc}</div>
+        </div>`;
+      list.appendChild(el);
+    });
+  }
+  S.phase='matching';
+  matchedMovies = matches;
+  myRanking = []; partnerRanking = null;
+  modeStarted = false; myRankingSubmitted = false;
+  myModeChoice2 = null; partnerModeChoice2 = null;
+
+  const btnRank = document.getElementById('btnRank');
+  const btnRand = document.getElementById('btnRand');
+  btnRank.disabled = false; btnRank.style.opacity = '1';
+  btnRand.disabled = false; btnRand.style.opacity = '1';
+  const waiting = document.querySelector('#modeButtons .mode-waiting');
+  if(waiting) waiting.style.display = 'none';
+
+  const modeBtns = document.getElementById('modeButtons');
+  if(matches.length > 1) modeBtns.style.display = 'block';
+  else modeBtns.style.display = 'none';
+
+  show('matchScreen');
+}
+
+// ════════════════════════════════════════════════════════
+//  MODE SELECTION
+// ════════════════════════════════════════════════════════
+let modeStarted = false;
+let myModeChoice2 = null;
+let partnerModeChoice2 = null;
+
+function chooseMode(mode) {
+  if(myModeChoice2) return;
+  myModeChoice2 = mode;
+  setModeWaitingUI(mode);
+
+  if(S.online && S.roomRef) {
+    S.roomRef.child(`modeChoices/${S.playerId}`).set(mode).catch(e => {
+      console.error(e);
+      toast('Could not save choice.');
+    });
+    return;
+  }
+
+  launchMode(mode);
+}
+
+function launchMode(mode) {
+  if(modeStarted) return;
+  modeStarted = true;
+  const msg = mode === 'rank' ? '🏆 Ranking round!' : '🎲 Picking randomly!';
+  toast(msg);
+  setTimeout(() => {
+    if(mode === 'rank') startRanking();
+    else pickRandom();
+  }, 800);
+}
+
+// ════════════════════════════════════════════════════════
+//  RANKING MODE
+// ════════════════════════════════════════════════════════
+function startRanking(playerName) {
+  S.phase='ranking';
+  myRanking = [...matchedMovies];
+  const name = playerName || S.myName;
+  document.getElementById('rankTitle').textContent = name.toUpperCase();
+  document.getElementById('rankSub').textContent = `${name}, move your favourites to the top`;
+  renderRankList();
+  show('rankScreen');
+}
+
+function renderRankList() {
+  const list = document.getElementById('rankList');
+  list.innerHTML = '';
+  myRanking.forEach((m, i) => {
+    const el = document.createElement('div');
+    el.className = 'rank-item';
+    el.dataset.id = m.id;
+    el.innerHTML = `
+      <div class="rank-num">${i+1}</div>
+      <img class="rank-poster" src="${m.poster}" alt="${m.title}"
+        onerror="this.style.display='none'">
+      <div class="rank-info">
+        <div class="rank-name">${m.title}</div>
+        <div class="rank-meta">⭐ ${m.rating} · ${m.year}</div>
+      </div>
+      <div class="rank-arrows">
+        <button class="rank-arr" onclick="moveRank(${i},-1)" ${i===0?'disabled':''}>▲</button>
+        <button class="rank-arr" onclick="moveRank(${i},1)" ${i===myRanking.length-1?'disabled':''}>▼</button>
+      </div>`;
+    list.appendChild(el);
+  });
+}
+
+function moveRank(idx, dir) {
+  const newIdx = idx + dir;
+  if(newIdx < 0 || newIdx >= myRanking.length) return;
+  [myRanking[idx], myRanking[newIdx]] = [myRanking[newIdx], myRanking[idx]];
+  renderRankList();
+}
+
+function rankMapFromList(list) {
+  const ranks = {};
+  list.forEach((m, i) => ranks[m.id] = i);
+  return ranks;
+}
+
+function submitRanking() {
+  myRankingSubmitted = true;
+  const ranks = rankMapFromList(myRanking);
+
+  // Local game — save ranking and hand off to player 2
+  if(!S.online) {
+    if(!partnerRanking) {
+      partnerRanking = ranks;
+      myRankingSubmitted = false;
+      myRanking = [...matchedMovies];
+      const p1 = localGame.players[0] || S.myName;
+      const p2 = localGame.players[1] || 'Player 2';
+      document.getElementById('handoffTitle').textContent = `Nice ${p1}!`;
+      document.getElementById('handoffSub').textContent = `Now pass to ${p2}, it's their turn to rank!`;
+      document.getElementById('handoffBtn').textContent = `I'm ${p2} 🎬`;
+      document.getElementById('handoffBtn').onclick = () => { startRanking(p2); };
+      show('handoffScreen');
+    } else {
+      const player2Ranks = ranks;
+      const player1Ranks = partnerRanking;
+      partnerRanking = player2Ranks;
+      myRanking = matchedMovies.map((m, i) => ({...m, _pos: player1Ranks[m.id] ?? i}))
+        .sort((a, b) => a._pos - b._pos);
+      showWinner();
+    }
+    return;
+  }
+
+  if(S.roomRef) {
+    S.roomRef.child(`rankings/${S.playerId}`).set(ranks).catch(e => {
+      console.error(e);
+      toast('Could not save ranking.');
+    });
+  }
+  show('rankWaitScreen');
+}
+
+function getMyRankMap() {
+  if(S.online && S.lastRoomData?.rankings?.[S.playerId]) return S.lastRoomData.rankings[S.playerId];
+  return rankMapFromList(myRanking);
+}
+
+function showWinner() {
+  const myRanks = getMyRankMap();
+  const otherRanks = partnerRanking || {};
+  const scores = {};
+  matchedMovies.forEach(m => {
+    const mine = myRanks[m.id] ?? 99;
+    const theirs = otherRanks[m.id] ?? 99;
+    scores[m.id] = mine + theirs;
+  });
+  const winner = matchedMovies.reduce((best, m) => scores[m.id] < scores[best.id] ? m : best);
+  if(S.online && S.roomRef) {
+    S.roomRef.child('winner').transaction(current => current || {
+      movie: winner,
+      banner: '🏆 YOUR|PICK!',
+      sub: 'Both ranked this the highest',
+      created: Date.now()
+    }).catch(()=>{});
+  }
+  showWinnerMovie(winner, '🏆 YOUR|PICK!', 'Both ranked this the highest');
+}
+
+// ════════════════════════════════════════════════════════
+//  RANDOM MODE
+// ════════════════════════════════════════════════════════
+function pickRandom() {
+  const pick = matchedMovies[deterministicIndex(matchedMovies.length)];
+  if(S.online && S.roomRef) {
+    S.roomRef.child('winner').transaction(current => current || {
+      movie: pick,
+      banner: '🎲 RANDOM\nPICK!',
+      sub: 'The dice have spoken',
+      created: Date.now()
+    }).catch(()=>{});
+  }
+  showWinnerMovie(pick, '🎲 RANDOM\nPICK!', 'The dice have spoken');
+}
+
+function showWinnerMovie(m, banner, sub, markShown = true) {
+  if(!m) return;
+  if(markShown) S.winnerShown = true;
+  document.getElementById('winnerBanner').innerHTML = banner.replace('|','<br>').replace('\n','<br>');
+  document.getElementById('winnerSub').textContent = sub;
+  document.getElementById('winnerCard').innerHTML = `
+    <img class="winner-poster" src="${m.poster}" alt="${m.title}"
+      onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div class="winner-poster-fallback" style="display:none">${m.emoji}</div>
+    <div class="winner-info">
+      <div class="winner-title">${m.title}</div>
+      <div class="winner-meta">⭐ ${m.rating} · ${m.year}</div>
+      <div class="winner-desc">${m.desc}</div>
+    </div>`;
+  show('winnerScreen');
+}
+
+// ════════════════════════════════════════════════════════
+//  AUDIO (iTunes Search API — no auth needed)
+// ════════════════════════════════════════════════════════
+let audioUnlocked = false;
+let isMuted = false;
+
+function unlockAudio() {
+  if(audioUnlocked) return;
+  audioUnlocked = true;
+  // Play a silent sound to unlock audio context on mobile
+  const silence = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+  silence.play().catch(()=>{});
+  // Retry current card now that audio is unlocked
+  if(S.movies.length && S.idx < S.movies.length) {
+    onCardChanged(S.movies[S.idx], S.movies[S.idx + 1] || null);
+  }
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  const btn = document.getElementById('muteBtn');
+  if(btn) btn.textContent = isMuted ? '🔇' : '🔊';
+  if(currentAudio) currentAudio.volume = isMuted ? 0 : 0.4;
+}
+
+async function fetchPreview(movie) {
+  if(previewCache[movie.id] !== undefined) return previewCache[movie.id];
+  // Most specific to least specific — year helps avoid wrong movie matches
+  const queries = [
+    `${movie.title} ${movie.year} original motion picture soundtrack`,
+    `${movie.title} ${movie.year} score`,
+    `${movie.title} original motion picture soundtrack`,
+    `${movie.title} original score`,
+    `${movie.title} theme`,
+  ];
+  for(const q of queries) {
+    try {
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=10&callback=itunesCallback_${movie.id}`;
+      const preview = await new Promise((resolve) => {
+        const name = `itunesCallback_${movie.id}`;
+        const script = document.createElement('script');
+        const timeout = setTimeout(() => {
+          delete window[name];
+          document.head.removeChild(script);
+          resolve(null);
+        }, 5000);
+        window[name] = (data) => {
+          clearTimeout(timeout);
+          delete window[name];
+          try { document.head.removeChild(script); } catch(e){}
+          const titleWords = movie.title.toLowerCase().split(' ').filter(w => w.length > 2);
+          const results = (data.results || []).filter(r => r.previewUrl);
+          // Must match at least one key word from movie title in collection or track name
+          const relevant = results.filter(r => {
+            const col = (r.collectionName || '').toLowerCase();
+            const track = (r.trackName || '').toLowerCase();
+            return titleWords.some(w => col.includes(w) || track.includes(w));
+          });
+          const pool = relevant.length ? relevant : results;
+          // Prefer soundtrack/score albums
+          const best = pool.find(r =>
+            (r.collectionName || '').toLowerCase().includes('soundtrack') ||
+            (r.collectionName || '').toLowerCase().includes('score') ||
+            (r.collectionName || '').toLowerCase().includes('original')
+          ) || pool.find(r =>
+            (r.trackName || '').toLowerCase().includes('theme') ||
+            (r.trackName || '').toLowerCase().includes('main title')
+          ) || pool[0];
+          resolve(best?.previewUrl || null);
+        };
+        script.src = url;
+        document.head.appendChild(script);
+      });
+      if(preview) {
+        previewCache[movie.id] = preview;
+        return preview;
+      }
+    } catch(e) {}
+  }
+  previewCache[movie.id] = null;
+  return null;
+}
+
+function playPreview(url) {
+  stopPreview(false);
+  if(!url || !audioUnlocked) return;
+  const audio = new Audio(url);
+  audio.volume = 0;
+  audio.crossOrigin = 'anonymous';
+  currentAudio = audio;
+  audio.play().then(() => {
+    if(audio !== currentAudio) return; // swapped already
+    if(!isMuted) fadeAudio(audio, 0, 0.4, 1000);
+    showMusicBar(true);
+  }).catch(() => showMusicBar(false));
+}
+
+function stopPreview(hideBar = true) {
+  if(currentAudio) {
+    try { currentAudio.pause(); } catch(e) {}
+    currentAudio = null;
+  }
+  if(hideBar) showMusicBar(false);
+}
+
+function fadeAudio(audio, from, to, duration, cb) {
+  const steps = 15;
+  const interval = duration / steps;
+  const delta = (to - from) / steps;
+  let step = 0;
+  const timer = setInterval(() => {
+    step++;
+    try { audio.volume = Math.min(1, Math.max(0, from + delta * step)); } catch(e){}
+    if(step >= steps) { clearInterval(timer); if(cb) cb(); }
+  }, interval);
+}
+
+function showMusicBar(visible) {
+  const bar = document.getElementById('musicBar');
+  if(bar) bar.classList.toggle('show', visible);
+}
+
+async function onCardChanged(movie, nextMovie) {
+  stopPreview(true);
+  const url = await fetchPreview(movie);
+  // Guard: only play if we're still on this movie
+  if(S.movies[S.idx] && S.movies[S.idx].id === movie.id) playPreview(url);
+  if(nextMovie && previewCache[nextMovie.id] === undefined) fetchPreview(nextMovie);
+}
+
+// ════════════════════════════════════════════════════════
+//  BACKDROP SLIDESHOW
+// ════════════════════════════════════════════════════════
+let backdropCache = {};
+let slideshowTimer = null;
+
+async function prefetchBackdrops(movieId) {
+  if(backdropCache[movieId] !== undefined) return;
+  try {
+    const data = await tmdb(`/movie/${movieId}/images`);
+    const backdrops = (data.backdrops || [])
+      .slice(0, 6)
+      .map(b => `https://image.tmdb.org/t/p/w780${b.file_path}`);
+    backdropCache[movieId] = backdrops.length ? backdrops : null;
+  } catch(e) {
+    backdropCache[movieId] = null;
+  }
+}
+
+async function startSlideshow(movie) {
+  clearInterval(slideshowTimer);
+  // Fetch backdrops if not cached
+  if(backdropCache[movie.id] === undefined) await prefetchBackdrops(movie.id);
+  const images = backdropCache[movie.id];
+  if(!images || images.length < 2) return; // just show poster
+
+  const wrap = document.getElementById(`slides_${movie.id}`);
+  if(!wrap) return;
+
+  // Preload all images then add to DOM
+  const loaded = await Promise.all(images.map(src => new Promise(res => {
+    const img = new Image();
+    img.onload = () => res(src);
+    img.onerror = () => res(null);
+    img.src = src;
+  })));
+  const valid = loaded.filter(Boolean);
+  if(valid.length < 2) return;
+
+  // Replace poster with backdrop slides
+  wrap.innerHTML = valid.map((src, i) =>
+    `<img class="slide-img${i===0?' active':''}" src="${src}">`
+  ).join('');
+
+  // Cycle every 1.2 seconds
+  let idx = 0;
+  slideshowTimer = setInterval(() => {
+    const slides = wrap.querySelectorAll('.slide-img');
+    if(!slides.length) { clearInterval(slideshowTimer); return; }
+    slides[idx % slides.length].classList.remove('active');
+    idx = (idx + 1) % slides.length;
+    slides[idx].classList.add('active');
+  }, 1200);
+}
+
+// ════════════════════════════════════════════════════════
+//  LOCAL GAME
+// ════════════════════════════════════════════════════════
+let localCfg = { genre: 0, count: 10 };
+
+function selectPlayerCount(count) {
+  // Build name inputs
+  const list = document.getElementById('localPlayerList');
+  list.innerHTML = '';
+  for(let i = 0; i < count; i++) {
+    const row = document.createElement('div');
+    row.className = 'local-player-row';
+    row.innerHTML = `<input type="text" placeholder="Player ${i+1} name" maxlength="20" class="local-name-input"/>`;
+    list.appendChild(row);
+  }
+  showStep('stepLocalNames');
+}
+
+function addLocalPlayer() {} // replaced by selectPlayerCount
+
+function setPillGroup(groupId, val, el) {
+  document.getElementById(groupId).querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
+  el.classList.add('sel');
+  if(groupId === 'localGenrePills') localCfg.genre = val;
+  else if(groupId === 'localCountPills') localCfg.count = val;
+}
+
+async function startLocalGame() {
+  const names = [...document.querySelectorAll('.local-name-input')]
+    .map(i => i.value.trim()).filter(Boolean);
+  if(names.length < 2) { toast('Add at least 2 players'); return; }
+
+  localGame.players = names;
+  localGame.votes = names.map(() => ({}));
+  localGame.currentTurn = 0;
+  localGame.active = true;
+  S.online = false; // local mode only
+
+  const savedCfg = {...cfg};
+  cfg.genre = localCfg.genre;
+  cfg.count = localCfg.count;
+  showLoad('Fetching movies...');
+  try {
+    S.movies = await fetchMovies();
+    cfg.genre = savedCfg.genre;
+    cfg.count = savedCfg.count;
+    hideLoad();
+    showLocalHandoff(0);
+  } catch(e) {
+    hideLoad();
+    toast('Error loading movies. Try again.');
+  }
+}
+
+function showLocalHandoff(turnIndex) {
+  const name = localGame.players[turnIndex];
+  const isFirst = turnIndex === 0;
+  const prevName = !isFirst ? localGame.players[turnIndex - 1] : null;
+  document.getElementById('handoffTitle').textContent = isFirst ? `Hey ${name}!` : `Nice ${prevName}!`;
+  document.getElementById('handoffSub').textContent = isFirst
+    ? `You're up first. Swipe the movies then pass the phone.`
+    : `Pass the phone to ${name} — don't show your choices!`;
+  document.getElementById('handoffBtn').textContent = `I'm ${name} 🎬`;
+  document.getElementById('handoffBtn').onclick = () => continueLocalGame();
+  show('handoffScreen');
+}
+
+function continueLocalGame() {
+  const name = localGame.players[localGame.currentTurn];
+  S.myName = name;
+  S.myVotes = {};
+  S.partnerVotes = null;
+  S.isHost = true;
+  S.online = false;
+  S.phase = 'swiping';
+  S.idx = 0;
+  document.getElementById('myBadge').textContent = name;
+  renderCards();
+  show('swipeScreen');
+}
+
+function finishLocalTurn() {
+  stopPreview();
+  clearInterval(slideshowTimer);
+  localGame.votes[localGame.currentTurn] = {...S.myVotes};
+  localGame.currentTurn++;
+
+  if(localGame.currentTurn < localGame.players.length) {
+    showLocalHandoff(localGame.currentTurn);
+  } else {
+    // All players done — calculate group matches
+    showLocalMatches();
+  }
+}
+
+function showLocalMatches() {
+  const total = localGame.players.length;
+  // Count how many players liked each movie
+  const scores = {};
+  S.movies.forEach(m => {
+    scores[m.id] = localGame.votes.filter(v => v[m.id] === true).length;
+  });
+  // Sort by score descending, only include movies liked by at least 1
+  const ranked = S.movies
+    .filter(m => scores[m.id] > 0)
+    .sort((a, b) => scores[b.id] - scores[a.id]);
+
+  localGame.active = false;
+
+  // For 2 players use normal match screen
+  if(total === 2) {
+    S.myVotes = localGame.votes[0];
+    S.partnerVotes = localGame.votes[1];
+    showMatches();
+    return;
+  }
+
+  // For groups — show ranked results
+  const list = document.getElementById('matchList');
+  const sub = document.getElementById('matchSub');
+  const banner = document.querySelector('.match-banner');
+  list.innerHTML = '';
+
+  if(!ranked.length) {
+    banner.style.background = 'linear-gradient(135deg,#e63c64,#ff6b35)';
+    banner.style.webkitBackgroundClip = 'text';
+    banner.innerHTML = 'NO<br>MATCH 😕';
+    sub.textContent = 'Nobody agreed on anything!';
+  } else {
+    banner.style.background = 'linear-gradient(135deg,var(--match),#00b8ff)';
+    banner.style.webkitBackgroundClip = 'text';
+    banner.innerHTML = "GROUP<br>PICKS!";
+    sub.textContent = `${ranked.length} movie${ranked.length>1?'s':''} got votes`;
+    ranked.forEach((m, i) => {
+      const score = scores[m.id];
+      const el = document.createElement('div');
+      el.className = 'match-item';
+      el.style.animationDelay = `${i*.1}s`;
+      el.innerHTML = `
+        <img class="match-poster" src="${m.poster}" alt="${m.title}"
+          onerror="this.outerHTML='<div class=\"match-emoji-box\">${m.emoji}</div>'">
+        <div>
+          <div class="match-title">${m.title}</div>
+          <div class="match-meta">⭐ ${m.rating} · ${m.year}</div>
+          <div style="font-size:12px;color:var(--match);margin-top:4px">
+            👍 ${score}/${total} players
+          </div>
+        </div>`;
+      list.appendChild(el);
+    });
+  }
+
+  // Hide mode buttons for group (ranking doesn't make sense)
+  document.getElementById('modeButtons').style.display = 'none';
+  show('matchScreen');
+}
+
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+function genCode() {
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:5},()=>c[Math.floor(Math.random()*c.length)]).join('');
+}
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function showLoad(t){document.getElementById('loadTxt').textContent=t||'Loading...';document.getElementById('overlay').classList.add('show');}
+function hideLoad(){document.getElementById('overlay').classList.remove('show');}
+function toast(msg,d=2800){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
+async function copyCode(){
+  const link = getInviteLink();
+  try {
+    if(navigator.share) {
+      await navigator.share({ title: 'MovieMatch', text: `Join my MovieMatch room: ${S.roomCode}`, url: link });
+      return;
+    }
+  } catch(e) {}
+  navigator.clipboard.writeText(link).then(()=>toast('Invite link copied! 📋')).catch(()=>toast(`Code: ${S.roomCode}`));
+}
+function playAgain(){
+  const oldRoomRef = S.online ? S.roomRef : null;
+  stopRoomListener();
+  if(oldRoomRef){try{oldRoomRef.remove().catch(()=>{});}catch(e){}}
+  localGame = { active:false, players:[], votes:[], currentTurn:0 };
+  matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
+  S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.roomRef=null;S.lastRoomData=null;S.online=false;S.playerId='';S.partnerId='';S.matchesShown=false;S.winnerShown=false;S.phase='idle';
+  document.getElementById('createName').value='';
+  document.getElementById('joinName').value='';
+  document.getElementById('joinCode').value='';
+  try { history.replaceState({}, '', location.pathname); } catch(e) {}
+  showStep('stepHome');
+  show('landingScreen');
+}
+</script>
+</body>
+</html>

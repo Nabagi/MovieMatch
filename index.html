@@ -86,6 +86,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   transition:all .25s;text-align:center}
 .big-btn-start{background:linear-gradient(135deg,var(--accent),#ff6b35);color:#fff}
 .big-btn-join{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.big-btn-local{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff}
 .big-btn:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3)}
 .back-btn{background:none;border:none;color:var(--muted);font-family:'DM Sans';
   font-size:13px;cursor:pointer;padding:4px 0;align-self:flex-start}
@@ -313,6 +314,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:8px">
       <button class="big-btn big-btn-start" onclick="showStep('stepCreate')">🎬 Start a Room</button>
       <button class="big-btn big-btn-join" onclick="showStep('stepJoin')">🔗 Join a Room</button>
+      <button class="big-btn big-btn-local" onclick="showStep('stepLocal')">📱 Local Game</button>
     </div>
   </div>
 
@@ -348,6 +350,41 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
       </div>
 
       <button class="btn btn-primary" style="margin-top:4px" onclick="createRoom()">Create Room →</button>
+    </div>
+  </div>
+
+  <!-- STEP: LOCAL -->
+  <div class="step" id="stepLocal">
+    <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:14px">
+      <div class="step-title">Player 1 Name</div>
+      <input type="text" id="localName1" placeholder="Enter name" maxlength="20"/>
+      <div class="step-title">Player 2 Name</div>
+      <input type="text" id="localName2" placeholder="Enter name" maxlength="20"/>
+
+      <div class="step-title">Category</div>
+      <div class="pill-row" id="localGenrePills" style="flex-wrap:wrap">
+        <div class="pill sel" onclick="setPillGroup('localGenrePills',0,this)">🎬 All</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',28,this)">⚔️ Action</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',35,this)">😂 Comedy</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',27,this)">👻 Horror</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',18,this)">🎭 Drama</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',878,this)">🚀 Sci-Fi</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',10749,this)">💕 Romance</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',14,this)">🧙 Fantasy</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',53,this)">😱 Thriller</div>
+        <div class="pill" onclick="setPillGroup('localGenrePills',16,this)">✨ Animation</div>
+      </div>
+
+      <div class="step-title">How Many Movies?</div>
+      <div class="pill-row" id="localCountPills">
+        <div class="pill sel" onclick="setPillGroup('localCountPills',10,this)">10</div>
+        <div class="pill" onclick="setPillGroup('localCountPills',20,this)">20</div>
+        <div class="pill" onclick="setPillGroup('localCountPills',30,this)">30</div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:4px" onclick="startLocalGame()">Start Game →</button>
     </div>
   </div>
 
@@ -494,6 +531,18 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 </div>
 </div>
 
+<!-- HANDOFF SCREEN -->
+<div class="screen" id="handoffScreen">
+<div class="screen-inner">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:40px 32px;max-width:320px;text-align:center;width:100%">
+    <div style="font-size:48px;margin-bottom:16px">📱</div>
+    <div style="font-family:'Bebas Neue';font-size:36px;letter-spacing:3px;margin-bottom:8px" id="handoffTitle">Pass the phone!</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:24px" id="handoffSub">Hand the phone to your partner</div>
+    <button class="btn btn-primary" id="handoffBtn" onclick="continueLocalGame()">I'm ready 🎬</button>
+  </div>
+</div>
+</div>
+
 <!-- LOADING OVERLAY -->
 <div class="overlay" id="overlay">
   <div class="spinner"></div>
@@ -560,6 +609,7 @@ let S = {
   phase:'idle', // idle, swiping, done, matching, ranking
 };
 let cfg = { count: 10, genre: 0 };
+let localGame = { active:false, player1:'', player2:'', votes1:{}, votes2:{}, turn:1 };
 // ── AUDIO ──
 let currentAudio = null;
 let previewCache = {};
@@ -950,6 +1000,7 @@ function recordVote(id,liked) {
 //  FINISH & MATCHES
 // ════════════════════════════════════════════════════════
 function finishSwiping() {
+  if(localGame.active) { finishLocalTurn(); return; }
   S.phase='done';
   stopPreview();
   clearInterval(slideshowTimer);
@@ -1337,6 +1388,97 @@ async function startSlideshow(movie) {
 }
 
 // ════════════════════════════════════════════════════════
+//  LOCAL GAME
+// ════════════════════════════════════════════════════════
+let localCfg = { genre: 0, count: 10 };
+
+function setPillGroup(groupId, val, el) {
+  document.getElementById(groupId).querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
+  el.classList.add('sel');
+  if(groupId === 'localGenrePills') localCfg.genre = val;
+  else if(groupId === 'localCountPills') localCfg.count = val;
+}
+
+async function startLocalGame() {
+  const n1 = document.getElementById('localName1').value.trim();
+  const n2 = document.getElementById('localName2').value.trim();
+  if(!n1) { toast('Enter Player 1 name'); return; }
+  if(!n2) { toast('Enter Player 2 name'); return; }
+  localGame.player1 = n1;
+  localGame.player2 = n2;
+  localGame.votes1 = {};
+  localGame.votes2 = {};
+  localGame.turn = 1;
+  localGame.active = true;
+
+  // Borrow cfg for movie fetching
+  const savedCfg = {...cfg};
+  cfg.genre = localCfg.genre;
+  cfg.count = localCfg.count;
+
+  showLoad('Fetching movies...');
+  try {
+    S.movies = await fetchMovies();
+    cfg.genre = savedCfg.genre;
+    cfg.count = savedCfg.count;
+    hideLoad();
+    // Show handoff for player 1
+    document.getElementById('handoffTitle').textContent = `Hey ${n1}!`;
+    document.getElementById('handoffSub').textContent = `You're up first. Swipe the movies and hand the phone to ${n2} when done.`;
+    document.getElementById('handoffBtn').textContent = "Let's go 🎬";
+    show('handoffScreen');
+  } catch(e) {
+    hideLoad();
+    toast('Error loading movies. Try again.');
+  }
+}
+
+function continueLocalGame() {
+  if(localGame.turn === 1) {
+    // Start player 1 swiping
+    S.myName = localGame.player1;
+    S.myVotes = {};
+    S.partnerVotes = null;
+    S.isHost = true;
+    S.phase = 'swiping';
+    S.idx = 0;
+    document.getElementById('myBadge').textContent = localGame.player1;
+    renderCards();
+    show('swipeScreen');
+  } else {
+    // Start player 2 swiping
+    S.myName = localGame.player2;
+    S.myVotes = {};
+    S.partnerVotes = null;
+    S.idx = 0;
+    document.getElementById('myBadge').textContent = localGame.player2;
+    renderCards();
+    show('swipeScreen');
+  }
+}
+
+function finishLocalTurn() {
+  stopPreview();
+  clearInterval(slideshowTimer);
+  if(localGame.turn === 1) {
+    localGame.votes1 = {...S.myVotes};
+    localGame.turn = 2;
+    // Handoff to player 2
+    document.getElementById('handoffTitle').textContent = `Nice ${localGame.player1}!`;
+    document.getElementById('handoffSub').textContent = `Now pass the phone to ${localGame.player2}. Don't show your choices!`;
+    document.getElementById('handoffBtn').textContent = `I'm ${localGame.player2} 🎬`;
+    show('handoffScreen');
+  } else {
+    localGame.votes2 = {...S.myVotes};
+    // Both done — show matches
+    S.myVotes = localGame.votes1;
+    S.partnerVotes = localGame.votes2;
+    localGame.active = false;
+    showMatches();
+  }
+}
+
+// ════════════════════════════════════════════════════════
 //  HELPERS
 // ════════════════════════════════════════════════════════
 function genCode() {
@@ -1350,6 +1492,7 @@ function hideLoad(){document.getElementById('overlay').classList.remove('show');
 function toast(msg,d=2800){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
 function copyCode(){navigator.clipboard.writeText(S.roomCode).then(()=>toast('Code copied! 📋')).catch(()=>toast(`Code: ${S.roomCode}`));}
 function playAgain(){
+  localGame = { active:false, player1:'', player2:'', votes1:{}, votes2:{}, turn:1 };
   matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
   if(S.peer){try{S.peer.destroy();}catch(e){}}
   S.peer=null;S.conn=null;S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.roomRef=null;

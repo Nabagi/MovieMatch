@@ -486,7 +486,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
       Matches reveal when everyone is done.
     </p>
     <div style="margin-top:24px;font-size:13px;color:var(--muted)">
-      <span class="pulse"></span><span id="waitStatus">Waiting for players...</span>
+      <span class="pulse"></span><span id="waitStatus">Waiting for partner...</span>
     </div>
   </div>
 </div>
@@ -546,7 +546,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <div class="screen" id="matchScreen">
 <div class="match-wrap">
   <div class="match-banner">IT'S A<br>MATCH!</div>
-  <div class="match-sub" id="matchSub">Shared matches</div>
+  <div class="match-sub" id="matchSub">You both said yes to these</div>
   <div class="match-list" id="matchList"></div>
   <div id="modeButtons" style="width:100%;display:none">
     <div style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:10px">What's next?</div>
@@ -1123,39 +1123,43 @@ async function joinRoom() {
       return;
     }
 
+    // Claim one open player slot. Do this on the slot itself instead of
+    // transacting the whole room: whole-room transactions can receive a
+    // temporary null cache value and incorrectly abort as "full".
+    const max = Math.max(2, Math.min(8, initialRoom.maxPlayers || initialRoom.settings?.players || 2));
+    const joinedAt = Date.now();
+    const playerData = { name, joined: joinedAt, done: false };
     let joinedId = '';
-    const tx = await ref.transaction(room => {
-      if(!room || room.status !== 'waiting') return;
-      room.players = room.players || {};
-      const max = Math.max(2, Math.min(8, room.maxPlayers || room.settings?.players || 2));
-      const existing = Object.keys(room.players).filter(id => room.players[id] && !room.players[id].left);
-      if(existing.length >= max) return;
-      for(let i = 2; i <= max; i++) {
-        const id = `p${i}`;
-        if(!room.players[id]) {
-          joinedId = id;
-          room.players[id] = { name, joined: Date.now(), done: false };
-          break;
-        }
-      }
-      if(!joinedId) return;
-      return room;
-    });
 
-    if(!tx.committed || !joinedId) {
+    for(let i = 2; i <= max; i++) {
+      const id = `p${i}`;
+      const slotRef = ref.child(`players/${id}`);
+      const slotTx = await slotRef.transaction(current => {
+        return current === null ? playerData : undefined;
+      });
+      const val = slotTx.snapshot && slotTx.snapshot.val();
+      if(slotTx.committed && val && val.joined === joinedAt && val.name === name) {
+        joinedId = id;
+        break;
+      }
+    }
+
+    if(!joinedId) {
       hideLoad();
-      document.getElementById('joinErr').textContent='Room is full or already started.';
+      document.getElementById('joinErr').textContent='Room is full.';
       document.getElementById('joinErr').classList.add('show');
       return;
     }
 
+    const latestSnap = await ref.get();
+    const latestRoom = latestSnap.val() || initialRoom;
     S.roomRef = ref;
     S.playerId = joinedId;
-    S.movies = (tx.snapshot.val() || initialRoom).movies;
+    S.movies = latestRoom.movies || initialRoom.movies;
     S.phase = 'waiting';
     document.getElementById('displayCode').textContent = S.roomCode;
     startRoomListener();
-    updateWaitingRoomUI(tx.snapshot.val());
+    updateWaitingRoomUI(latestRoom);
     hideLoad();
     show('waitingScreen');
   } catch(e) {

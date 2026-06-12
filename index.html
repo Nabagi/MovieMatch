@@ -179,8 +179,9 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   opacity:0;transition:opacity .1s;pointer-events:none;z-index:20}
 .stamp-yes{left:14px;color:#00d4a0;border:3px solid #00d4a0;transform:rotate(-15deg)}
 .stamp-no{right:14px;color:var(--accent);border:3px solid var(--accent);transform:rotate(15deg)}
+.stamp-maybe{left:50%;top:auto;bottom:110px;color:var(--accent2);border:3px solid var(--accent2);transform:translateX(-50%) rotate(0deg)}
 
-.act-row{display:flex;gap:20px;align-items:center;padding:12px 0 8px;flex-shrink:0}
+.act-row{display:flex;gap:16px;align-items:center;padding:12px 0 8px;flex-shrink:0}
 .act-btn{border-radius:50%;border:none;cursor:pointer;display:flex;
   align-items:center;justify-content:center;font-size:26px;
   transition:all .2s;box-shadow:0 6px 20px rgba(0,0,0,.3)}
@@ -188,9 +189,8 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .act-no:hover{background:var(--accent);transform:scale(1.1)}
 .act-yes{width:72px;height:72px;background:var(--surface);border:2px solid var(--match);font-size:32px}
 .act-yes:hover{background:var(--match);transform:scale(1.1)}
-.act-undo{width:54px;height:54px;background:var(--surface);border:2px solid var(--accent2);font-size:24px;color:var(--accent2)}
-.act-undo:hover:not(:disabled){background:rgba(245,166,35,.16);transform:scale(1.08)}
-.act-undo:disabled{opacity:.28;cursor:default;transform:none!important}
+.act-maybe{width:58px;height:58px;background:var(--surface);border:2px solid var(--accent2);font-size:24px;color:var(--accent2)}
+.act-maybe:hover{background:rgba(245,166,35,.16);transform:scale(1.08)}
 .hint{font-size:11px;color:var(--muted);letter-spacing:1px;flex-shrink:0;padding-bottom:4px}
 
 /* ── DONE WAIT ── */
@@ -222,6 +222,9 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .match-meta{font-size:12px;color:var(--muted);margin-top:2px}
 .match-desc{font-size:12px;color:rgba(255,255,255,.35);margin-top:5px;line-height:1.45;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.match-kind{display:inline-block;margin-top:6px;border-radius:999px;padding:3px 9px;font-size:10px;letter-spacing:.7px;text-transform:uppercase}
+.match-kind-perfect{background:rgba(0,212,160,.12);border:1px solid rgba(0,212,160,.25);color:var(--match)}
+.match-kind-maybe{background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.25);color:var(--accent2)}
 .no-match{text-align:center;color:var(--muted);padding:32px;font-size:15px;font-style:italic}
 
 /* ── LOADING ── */
@@ -489,14 +492,15 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     <div class="card-stack" id="cardStack">
       <div class="stamp stamp-yes" id="stampYes">WATCH</div>
       <div class="stamp stamp-no"  id="stampNo">SKIP</div>
+      <div class="stamp stamp-maybe" id="stampMaybe">MAYBE</div>
     </div>
   </div>
   <div class="act-row">
     <button class="act-btn act-no" onclick="swipeBtn('no')" title="Skip">✕</button>
-    <button class="act-btn act-undo" id="undoBtn" onclick="undoLastSwipe()" title="Undo last swipe" disabled>↶</button>
+    <button class="act-btn act-maybe" onclick="swipeBtn('maybe')" title="Maybe">?</button>
     <button class="act-btn act-yes" onclick="swipeBtn('yes')" title="Watch it!">♥</button>
   </div>
-  <div class="hint">Swipe right to watch · left to skip</div>
+  <div class="hint">Swipe right to watch · left to skip · down for maybe</div>
 </div>
 </div>
 
@@ -647,7 +651,6 @@ let S = {
   online:false, playerId:'', partnerId:'',
   movies:[], idx:0, myVotes:{}, partnerVotes:null,
   roomRef:null, roomListener:null, lastRoomData:null,
-  lastSwipe:null,
   matchesShown:false, winnerShown:false,
   phase:'idle', // idle, waiting, swiping, done, matching, ranking
 };
@@ -978,8 +981,6 @@ async function joinRoom() {
 function setupSwipe() {
   S.phase='swiping';
   S.idx=0;
-  S.lastSwipe=null;
-  updateUndoButton();
   document.getElementById('myBadge').textContent=S.myName;
   renderCards();
 }
@@ -989,7 +990,6 @@ function renderCards() {
   stack.querySelectorAll('.mv-card').forEach(c=>c.remove());
   if(S.idx>=S.movies.length){finishSwiping();return;}
   updateProg();
-  updateUndoButton();
   if(S.idx+1<S.movies.length) stack.appendChild(buildCard(S.movies[S.idx+1],false));
   const active=buildCard(S.movies[S.idx],true);
   stack.appendChild(active);
@@ -1026,117 +1026,115 @@ function updateProg() {
 function initGlobalDrag() {} // no-op
 
 function attachDrag(card) {
-  let sx=0, sy=0, cx=0;
+  let sx=0, sy=0, dx=0, dy=0;
   const stampY = document.getElementById('stampYes');
   const stampN = document.getElementById('stampNo');
+  const stampM = document.getElementById('stampMaybe');
+
+  function resetStamps() {
+    stampY.style.opacity = 0;
+    stampN.style.opacity = 0;
+    if(stampM) stampM.style.opacity = 0;
+  }
+
+  function updateDrag(clientX, clientY) {
+    dx = clientX - sx;
+    dy = clientY - sy;
+    const visualY = dy * 0.35;
+    const rot = dx * .08;
+    card.style.transform = `translateX(${dx}px) translateY(${visualY}px) rotate(${rot}deg)`;
+
+    const xT = 70;
+    const yT = 75;
+    if(dy > yT && Math.abs(dx) < 120) {
+      if(stampM) stampM.style.opacity = Math.min((dy-yT)/70,1);
+      stampY.style.opacity = 0;
+      stampN.style.opacity = 0;
+    } else if(dx > xT) {
+      stampY.style.opacity = Math.min((dx-xT)/60,1);
+      stampN.style.opacity = 0;
+      if(stampM) stampM.style.opacity = 0;
+    } else if(dx < -xT) {
+      stampN.style.opacity = Math.min((-dx-xT)/60,1);
+      stampY.style.opacity = 0;
+      if(stampM) stampM.style.opacity = 0;
+    } else {
+      resetStamps();
+    }
+  }
+
+  function releaseCard() {
+    resetStamps();
+    card.style.transition = 'transform .3s ease';
+    if(dy > 110 && Math.abs(dx) < 130) flyOut(card, 'down');
+    else if(dx > 80)                   flyOut(card, 'right');
+    else if(dx < -80)                  flyOut(card, 'left');
+    else                               card.style.transform = '';
+    dx = 0; dy = 0;
+  }
 
   card.addEventListener('touchstart', e => {
     unlockAudio();
-    cx = 0;
+    dx = 0; dy = 0;
     card.style.transition = 'none';
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
   }, {passive:true});
 
   card.addEventListener('touchmove', e => {
-    cx = e.touches[0].clientX - sx;
-    const cy = (e.touches[0].clientY - sy) * 0.3;
-    card.style.transform = `translateX(${cx}px) translateY(${cy}px) rotate(${cx*.08}deg)`;
-    const t = 70;
-    if(cx > t)       { stampY.style.opacity = Math.min((cx-t)/60,1); stampN.style.opacity=0; }
-    else if(cx < -t) { stampN.style.opacity = Math.min((-cx-t)/60,1); stampY.style.opacity=0; }
-    else             { stampY.style.opacity=0; stampN.style.opacity=0; }
+    updateDrag(e.touches[0].clientX, e.touches[0].clientY);
   }, {passive:true});
 
-  card.addEventListener('touchend', () => {
-    stampY.style.opacity=0; stampN.style.opacity=0;
-    card.style.transition = 'transform .3s ease';
-    if(cx > 80)       flyOut(card, 'right');
-    else if(cx < -80) flyOut(card, 'left');
-    else              card.style.transform = '';
-    cx = 0;
-  });
+  card.addEventListener('touchend', releaseCard);
 
   // Mouse support for desktop testing
   let mouseDown = false;
   card.addEventListener('mousedown', e => {
     unlockAudio();
-    mouseDown = true; cx = 0;
+    mouseDown = true; dx = 0; dy = 0;
     card.style.transition = 'none';
     sx = e.clientX; sy = e.clientY;
   });
   window.addEventListener('mousemove', e => {
     if(!mouseDown) return;
-    cx = e.clientX - sx;
-    const cy = (e.clientY - sy) * 0.3;
-    card.style.transform = `translateX(${cx}px) translateY(${cy}px) rotate(${cx*.08}deg)`;
-    const t = 70;
-    if(cx > t)       { stampY.style.opacity = Math.min((cx-t)/60,1); stampN.style.opacity=0; }
-    else if(cx < -t) { stampN.style.opacity = Math.min((-cx-t)/60,1); stampY.style.opacity=0; }
-    else             { stampY.style.opacity=0; stampN.style.opacity=0; }
+    updateDrag(e.clientX, e.clientY);
   });
   window.addEventListener('mouseup', () => {
     if(!mouseDown) return;
     mouseDown = false;
-    stampY.style.opacity=0; stampN.style.opacity=0;
-    card.style.transition = 'transform .3s ease';
-    if(cx > 80)       flyOut(card, 'right');
-    else if(cx < -80) flyOut(card, 'left');
-    else              card.style.transform = '';
-    cx = 0;
+    releaseCard();
   });
 }
 
 function flyOut(card,dir) {
-  const x=dir==='right'?700:-700;
-  card.style.transform=`translateX(${x}px) rotate(${dir==='right'?30:-30}deg)`;
+  let x=0, y=0, rot=0, vote=false;
+  if(dir === 'right') { x = 700; rot = 30; vote = true; }
+  else if(dir === 'left') { x = -700; rot = -30; vote = false; }
+  else { y = 700; rot = 0; vote = 'maybe'; }
+  card.style.transform=`translateX(${x}px) translateY(${y}px) rotate(${rot}deg)`;
   card.style.opacity='0';
-  const liked=dir==='right';
-  setTimeout(()=>recordVote(parseInt(card.dataset.id),liked),280);
+  setTimeout(()=>recordVote(parseInt(card.dataset.id),vote),280);
 }
 
 function swipeBtn(dir) {
   unlockAudio();
   const c=document.querySelector('.mv-card.active');
-  if(c)flyOut(c,dir==='yes'?'right':'left');
+  if(!c) return;
+  if(dir === 'yes') flyOut(c,'right');
+  else if(dir === 'maybe') flyOut(c,'down');
+  else flyOut(c,'left');
 }
 
-function recordVote(id,liked) {
-  S.lastSwipe = { id, liked, idx: S.idx };
-  S.myVotes[id]=liked;
+function recordVote(id,vote) {
+  S.myVotes[id]=vote;
   S.idx++;
-  updateUndoButton();
   setTimeout(renderCards,80);
-}
-
-function undoLastSwipe() {
-  if(!S.lastSwipe || S.phase !== 'swiping') {
-    toast('Nothing to undo');
-    return;
-  }
-
-  const last = S.lastSwipe;
-  delete S.myVotes[last.id];
-  S.idx = last.idx;
-  S.lastSwipe = null;
-
-  updateUndoButton();
-  renderCards();
-  toast('Last swipe undone ↶');
-}
-
-function updateUndoButton() {
-  const btn = document.getElementById('undoBtn');
-  if(!btn) return;
-  btn.disabled = !(S.lastSwipe && S.phase === 'swiping');
 }
 
 // ════════════════════════════════════════════════════════
 //  FINISH & MATCHES
 // ════════════════════════════════════════════════════════
 function finishSwiping() {
-  S.lastSwipe=null;
-  updateUndoButton();
   if(localGame.active) { finishLocalTurn(); return; }
   S.phase='done';
   stopPreview();
@@ -1159,10 +1157,31 @@ function finishSwiping() {
   show('doneWaitScreen');
 }
 
+function isPositiveVote(v) {
+  return v === true || v === 'maybe';
+}
+
+function isMaybeVote(v) {
+  return v === 'maybe';
+}
+
 function showMatches() {
   S.matchesShown = true;
   const pv=S.partnerVotes||{};
-  const matches=S.movies.filter(m=>S.myVotes[m.id]===true&&pv[m.id]===true);
+  const perfectMatches=[];
+  const maybeMatches=[];
+
+  S.movies.forEach(m => {
+    const mine = S.myVotes[m.id];
+    const theirs = pv[m.id];
+    if(mine === true && theirs === true) {
+      perfectMatches.push({...m, matchKind:'perfect'});
+    } else if(isPositiveVote(mine) && isPositiveVote(theirs)) {
+      maybeMatches.push({...m, matchKind:'maybe'});
+    }
+  });
+
+  const matches=[...perfectMatches, ...maybeMatches];
   const list=document.getElementById('matchList');
   const sub=document.getElementById('matchSub');
   list.innerHTML='';
@@ -1171,14 +1190,18 @@ function showMatches() {
     banner.style.background = 'linear-gradient(135deg,#e63c64,#ff6b35)';
     banner.style.webkitBackgroundClip = 'text';
     banner.innerHTML = 'NO<br>MATCH 😕';
-    sub.textContent='Very different taste this time!';
+    sub.textContent='No shared yes or maybe picks this time!';
     list.innerHTML='<div class="no-match">Try another round!</div>';
   } else {
     banner.style.background = 'linear-gradient(135deg,var(--match),#00b8ff)';
     banner.style.webkitBackgroundClip = 'text';
     banner.innerHTML = "IT'S A<br>MATCH!";
-    sub.textContent=matches.length===1?'You both want to watch':'You both said yes to these';
+    if(perfectMatches.length && maybeMatches.length) sub.textContent=`${perfectMatches.length} yes match${perfectMatches.length>1?'es':''} · ${maybeMatches.length} maybe`;
+    else if(perfectMatches.length) sub.textContent=perfectMatches.length===1?'You both want to watch':'You both said yes to these';
+    else sub.textContent=maybeMatches.length===1?'You have one maybe match':'You have maybe matches';
+
     matches.forEach((m,i)=>{
+      const isMaybe = m.matchKind === 'maybe';
       const el=document.createElement('div');
       el.className='match-item';
       el.style.animationDelay=`${i*.1}s`;
@@ -1189,6 +1212,7 @@ function showMatches() {
           <div class="match-title">${m.title}</div>
           <div class="match-meta">⭐ ${m.rating} · ${m.year}</div>
           <div class="match-desc">${m.desc}</div>
+          <div class="match-kind ${isMaybe ? 'match-kind-maybe' : 'match-kind-perfect'}">${isMaybe ? 'Maybe match' : 'Perfect match'}</div>
         </div>`;
       list.appendChild(el);
     });
@@ -1653,8 +1677,6 @@ function continueLocalGame() {
   S.online = false;
   S.phase = 'swiping';
   S.idx = 0;
-  S.lastSwipe = null;
-  updateUndoButton();
   document.getElementById('myBadge').textContent = name;
   renderCards();
   show('swipeScreen');
@@ -1676,12 +1698,16 @@ function finishLocalTurn() {
 
 function showLocalMatches() {
   const total = localGame.players.length;
-  // Count how many players liked each movie
+  // Yes = 1 point, Maybe = 0.5 point
   const scores = {};
+  const yesCounts = {};
+  const maybeCounts = {};
   S.movies.forEach(m => {
-    scores[m.id] = localGame.votes.filter(v => v[m.id] === true).length;
+    yesCounts[m.id] = localGame.votes.filter(v => v[m.id] === true).length;
+    maybeCounts[m.id] = localGame.votes.filter(v => v[m.id] === 'maybe').length;
+    scores[m.id] = yesCounts[m.id] + maybeCounts[m.id] * 0.5;
   });
-  // Sort by score descending, only include movies liked by at least 1
+  // Sort by score descending, only include movies with at least one yes/maybe
   const ranked = S.movies
     .filter(m => scores[m.id] > 0)
     .sort((a, b) => scores[b.id] - scores[a.id]);
@@ -1706,14 +1732,15 @@ function showLocalMatches() {
     banner.style.background = 'linear-gradient(135deg,#e63c64,#ff6b35)';
     banner.style.webkitBackgroundClip = 'text';
     banner.innerHTML = 'NO<br>MATCH 😕';
-    sub.textContent = 'Nobody agreed on anything!';
+    sub.textContent = 'Nobody chose yes or maybe!';
   } else {
     banner.style.background = 'linear-gradient(135deg,var(--match),#00b8ff)';
     banner.style.webkitBackgroundClip = 'text';
     banner.innerHTML = "GROUP<br>PICKS!";
-    sub.textContent = `${ranked.length} movie${ranked.length>1?'s':''} got votes`;
+    sub.textContent = `${ranked.length} movie${ranked.length>1?'s':''} got yes/maybe votes`;
     ranked.forEach((m, i) => {
-      const score = scores[m.id];
+      const yes = yesCounts[m.id];
+      const maybe = maybeCounts[m.id];
       const el = document.createElement('div');
       el.className = 'match-item';
       el.style.animationDelay = `${i*.1}s`;
@@ -1724,7 +1751,7 @@ function showLocalMatches() {
           <div class="match-title">${m.title}</div>
           <div class="match-meta">⭐ ${m.rating} · ${m.year}</div>
           <div style="font-size:12px;color:var(--match);margin-top:4px">
-            👍 ${score}/${total} players
+            👍 ${yes}/${total} yes · 🤔 ${maybe}/${total} maybe
           </div>
         </div>`;
       list.appendChild(el);
@@ -1748,7 +1775,7 @@ function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.re
 function showLoad(t){document.getElementById('loadTxt').textContent=t||'Loading...';document.getElementById('overlay').classList.add('show');}
 function hideLoad(){document.getElementById('overlay').classList.remove('show');}
 function toast(msg,d=2800){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
-async function copyCode(){
+async async function copyCode(){
   const link = getInviteLink();
   try {
     if(navigator.share) {
@@ -1780,7 +1807,7 @@ function playAgain(){
   if(oldRoomRef){try{oldRoomRef.remove().catch(()=>{});}catch(e){}}
   localGame = { active:false, players:[], votes:[], currentTurn:0 };
   matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
-  S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.lastSwipe=null;updateUndoButton();S.roomRef=null;S.lastRoomData=null;S.online=false;S.playerId='';S.partnerId='';S.matchesShown=false;S.winnerShown=false;S.phase='idle';
+  S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.roomRef=null;S.lastRoomData=null;S.online=false;S.playerId='';S.partnerId='';S.matchesShown=false;S.winnerShown=false;S.phase='idle';
   document.getElementById('createName').value='';
   document.getElementById('joinName').value='';
   document.getElementById('joinCode').value='';

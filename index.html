@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MovieMatch">
 <title>MovieMatch</title>
-<!-- version: maybe + robust-results-fixed 2026-06-12 -->
+<!-- version: online-multiplayer-2-8 + maybe + robust-results 2026-06-12 -->
 <!-- Firebase-room version: online rooms no longer rely on PeerJS/WebRTC. -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
@@ -129,6 +129,10 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .invite-actions .copy-btn{flex:1;min-width:130px}
 .copy-btn-alt{background:rgba(255,255,255,.05);border-color:var(--border);color:var(--text)}
 .copy-btn-alt:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)}
+.wait-player-list{display:flex;flex-direction:column;gap:7px;margin-top:18px;text-align:left}
+.wait-player{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:13px}
+.wait-player span:last-child{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.wait-start{margin-top:16px;display:none}
 .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;
   background:var(--accent);margin-right:8px;animation:pulse 1.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
@@ -348,6 +352,17 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
       <div class="step-title">Your Name</div>
       <input type="text" id="createName" placeholder="Enter your name" maxlength="20"/>
 
+      <div class="step-title">Online Players</div>
+      <div class="pill-row" id="onlinePlayerPills">
+        <div class="pill sel" onclick="setPill('players',2,this)">2</div>
+        <div class="pill" onclick="setPill('players',3,this)">3</div>
+        <div class="pill" onclick="setPill('players',4,this)">4</div>
+        <div class="pill" onclick="setPill('players',5,this)">5</div>
+        <div class="pill" onclick="setPill('players',6,this)">6</div>
+        <div class="pill" onclick="setPill('players',7,this)">7</div>
+        <div class="pill" onclick="setPill('players',8,this)">8</div>
+      </div>
+
       <div class="step-title">Category</div>
       <div class="pill-row" id="genrePills" style="flex-wrap:wrap">
         <div class="pill sel" onclick="setPill('genre',0,this)">🎬 All</div>
@@ -463,13 +478,15 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
       <button class="copy-btn" onclick="copyCode()">🔗 Share Link</button>
       <button class="copy-btn copy-btn-alt" onclick="copyRoomCode()">📋 Copy Code</button>
     </div>
+    <div class="wait-player-list" id="waitPlayerList"></div>
+    <button class="btn btn-primary wait-start" id="startOnlineBtn" onclick="startOnlineGame()">Start Game →</button>
     <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.65">
-      Share this invite with your partner.<br>
-      You'll both swipe the same movies independently.<br>
-      Matches reveal only when both are done.
+      Share this invite with your group.<br>
+      Everyone swipes the same movies independently.<br>
+      Matches reveal when everyone is done.
     </p>
     <div style="margin-top:24px;font-size:13px;color:var(--muted)">
-      <span class="pulse"></span><span id="waitStatus">Waiting for partner...</span>
+      <span class="pulse"></span><span id="waitStatus">Waiting for players...</span>
     </div>
   </div>
 </div>
@@ -513,7 +530,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   <div class="done-card">
     <div class="done-title">All Done! 🎬</div>
     <p style="color:var(--muted);font-size:14px;line-height:1.6">
-      You've rated all the movies.<br>Waiting for your partner to finish...
+      You've rated all the movies.<br>Waiting for everyone else to finish...
     </p>
     <div style="margin-top:20px">
       <span class="pulse"></span>
@@ -529,11 +546,11 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <div class="screen" id="matchScreen">
 <div class="match-wrap">
   <div class="match-banner">IT'S A<br>MATCH!</div>
-  <div class="match-sub" id="matchSub">You both said yes to these</div>
+  <div class="match-sub" id="matchSub">Shared matches</div>
   <div class="match-list" id="matchList"></div>
   <div id="modeButtons" style="width:100%;display:none">
     <div style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:10px">What's next?</div>
-    <div class="mode-waiting" style="display:none;font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px"><span class="pulse"></span>Waiting for partner's choice...</div>
+    <div class="mode-waiting" style="display:none;font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px"><span class="pulse"></span>Waiting for everyone’s choice...</div>
     <div class="mode-row">
       <button class="mode-btn mode-rank" id="btnRank" onclick="chooseMode('rank')">🏆 Rank<br><span style="font-size:11px;opacity:.8">Pick together</span></button>
       <button class="mode-btn mode-rand" id="btnRand" onclick="chooseMode('random')">🎲 Random<br><span style="font-size:11px;opacity:.8">Surprise us</span></button>
@@ -562,7 +579,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <div class="screen-inner">
   <div class="rank-wait-card">
     <div style="font-family:'Bebas Neue';font-size:36px;letter-spacing:3px;margin-bottom:10px">Almost...</div>
-    <p style="color:var(--muted);font-size:14px;line-height:1.6">Your ranking is in!<br>Waiting for your partner...</p>
+    <p style="color:var(--muted);font-size:14px;line-height:1.6">Your ranking is in!<br>Waiting for everyone...</p>
     <div style="margin-top:20px"><span class="pulse"></span><span style="font-size:13px;color:var(--muted)">Waiting...</span></div>
   </div>
 </div>
@@ -650,12 +667,12 @@ let S = {
   fbApp:null, db:null,
   myName:'', roomCode:'', isHost:false,
   online:false, playerId:'', partnerId:'',
-  movies:[], idx:0, myVotes:{}, partnerVotes:null,
+  movies:[], idx:0, myVotes:{}, partnerVotes:null, allVotes:null,
   roomRef:null, roomListener:null, lastRoomData:null,
   matchesShown:false, winnerShown:false, donePoll:null,
   phase:'idle', // idle, waiting, swiping, done, matching, ranking
 };
-let cfg = { count: 10, genre: 0 };
+let cfg = { count: 10, genre: 0, players: 2 };
 let localGame = { active:false, players:[], votes:[], currentTurn:0 };
 // ── AUDIO ──
 let currentAudio = null;
@@ -706,8 +723,10 @@ function showStep(id) {
 //  PILL SELECTION
 // ════════════════════════════════════════════════════════
 function setPill(type, val, el) {
-  cfg[type === 'count' ? 'count' : 'genre'] = val;
-  const group = type === 'count' ? 'countPills' : 'genrePills';
+  if(type === 'count') cfg.count = val;
+  else if(type === 'players') cfg.players = val;
+  else cfg.genre = val;
+  const group = type === 'count' ? 'countPills' : (type === 'players' ? 'onlinePlayerPills' : 'genrePills');
   document.getElementById(group).querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
   el.classList.add('sel');
 }
@@ -804,7 +823,24 @@ async function createUniqueRoom(roomData) {
 }
 
 function partnerIdFor(id) {
-  return id === 'host' ? 'guest' : 'host';
+  const ids = getActivePlayerIds(S.lastRoomData || {});
+  return ids.find(pid => pid !== id) || '';
+}
+
+function getActivePlayerIds(room = S.lastRoomData || {}) {
+  const players = room?.players || {};
+  return Object.keys(players).filter(id => players[id] && !players[id].left).sort((a,b) => {
+    const order = id => id === 'host' ? 1 : (parseInt(String(id).replace(/\D/g,''),10) || 99);
+    return order(a) - order(b);
+  });
+}
+
+function getPlayerName(room, id) {
+  return room?.players?.[id]?.name || (id === 'host' ? 'Host' : `Player ${String(id).replace(/\D/g,'') || ''}`.trim());
+}
+
+function getMaxPlayers(room = S.lastRoomData || {}) {
+  return Math.max(2, Math.min(8, room?.maxPlayers || room?.settings?.players || 2));
 }
 
 function voteCountFor(room, playerId) {
@@ -819,21 +855,50 @@ function playerFinished(room, playerId) {
   return doneFlag || (movieCount > 0 && voteCount >= movieCount);
 }
 
+function roomHasAllDone(room) {
+  const ids = getActivePlayerIds(room);
+  return !!(room && ids.length >= 2 && ids.every(id => playerFinished(room, id)));
+}
+
 function roomHasBothDone(room) {
-  return !!(room && room.players?.host && room.players?.guest &&
-    room.votes?.host && room.votes?.guest &&
-    playerFinished(room, 'host') && playerFinished(room, 'guest'));
+  return roomHasAllDone(room);
+}
+
+function updateWaitingRoomUI(room) {
+  if(!room) return;
+  const ids = getActivePlayerIds(room);
+  const max = getMaxPlayers(room);
+  const list = document.getElementById('waitPlayerList');
+  if(list) {
+    list.innerHTML = ids.map(id => {
+      const me = id === S.playerId ? ' · you' : '';
+      const role = id === 'host' ? 'Host' : 'Joined';
+      return `<div class="wait-player"><strong>${escapeHtml(getPlayerName(room,id))}${me}</strong><span>${role}</span></div>`;
+    }).join('') + (ids.length < max ? `<div class="wait-player"><strong>Waiting...</strong><span>${ids.length}/${max}</span></div>` : '');
+  }
+  const waitStatus = document.getElementById('waitStatus');
+  if(waitStatus) {
+    if(room.status === 'playing') waitStatus.textContent = 'Starting game...';
+    else waitStatus.textContent = ids.length < 2 ? 'Waiting for players...' : `${ids.length}/${max} players joined`;
+  }
+  const startBtn = document.getElementById('startOnlineBtn');
+  if(startBtn) {
+    const canStart = S.isHost && room.status === 'waiting' && ids.length >= 2;
+    startBtn.style.display = canStart ? 'block' : 'none';
+    startBtn.textContent = ids.length >= max ? 'Start Game →' : `Start with ${ids.length} players →`;
+  }
 }
 
 function updateDoneWaitStatus(room) {
   const status = document.getElementById('doneWaitStatus');
   if(!status || !room) return;
   const movieCount = room?.movies?.length || S.movies.length || 0;
-  const hostDone = playerFinished(room, 'host');
-  const guestDone = playerFinished(room, 'guest');
-  const hostTxt = hostDone ? 'Host ✓' : `Host ${voteCountFor(room,'host')}/${movieCount}`;
-  const guestTxt = guestDone ? 'Guest ✓' : `Guest ${voteCountFor(room,'guest')}/${movieCount}`;
-  status.textContent = `${hostTxt} · ${guestTxt}`;
+  const ids = getActivePlayerIds(room);
+  const parts = ids.map(id => {
+    const name = getPlayerName(room, id);
+    return playerFinished(room, id) ? `${name} ✓` : `${name} ${voteCountFor(room,id)}/${movieCount}`;
+  });
+  status.textContent = parts.join(' · ');
 }
 
 async function checkCompletedRoomNow(showMessage = false) {
@@ -845,18 +910,19 @@ async function checkCompletedRoomNow(showMessage = false) {
     if(room?.movies?.length) S.movies = room.movies;
     updateDoneWaitStatus(room);
 
-    if(roomHasBothDone(room)) {
+    if(roomHasAllDone(room)) {
       const myId = S.playerId;
-      const otherId = S.partnerId || partnerIdFor(S.playerId);
       if(room.votes?.[myId]) S.myVotes = room.votes[myId];
-      S.partnerVotes = room.votes?.[otherId] || {};
+      S.allVotes = room.votes || {};
+      const otherId = partnerIdFor(S.playerId);
+      S.partnerVotes = otherId ? (room.votes?.[otherId] || {}) : {};
       showMatches();
       return true;
     }
 
     if(showMessage) {
-      const otherId = S.partnerId || partnerIdFor(S.playerId);
-      const msg = playerFinished(room, otherId) ? 'Results are almost ready...' : 'Partner has not finished yet';
+      const waiting = getActivePlayerIds(room).filter(id => !playerFinished(room, id)).map(id => getPlayerName(room, id));
+      const msg = waiting.length ? `Waiting for ${waiting.join(', ')}` : 'Results are almost ready...';
       toast(msg);
     }
     return false;
@@ -892,6 +958,16 @@ function deterministicChoice(a, b) {
   return sum % 2 === 0 ? 'rank' : 'random';
 }
 
+function finalModeFromChoices(room) {
+  const ids = getActivePlayerIds(room);
+  const choices = room?.modeChoices || {};
+  if(ids.length < 2 || !ids.every(id => choices[id])) return null;
+  const counts = { rank: 0, random: 0 };
+  ids.forEach(id => { if(choices[id] === 'rank') counts.rank++; else if(choices[id] === 'random') counts.random++; });
+  if(counts.rank === counts.random) return deterministicChoice('rank', 'random');
+  return counts.rank > counts.random ? 'rank' : 'random';
+}
+
 function deterministicIndex(max) {
   if(!max) return 0;
   const seed = `${S.roomCode}:${matchedMovies.map(m => m.id).join(',')}`;
@@ -920,32 +996,25 @@ function onRoomUpdate(room) {
   if(room.movies && room.movies.length) S.movies = room.movies;
   S.partnerId = partnerIdFor(S.playerId);
 
-  const host = room.players?.host;
-  const guest = room.players?.guest;
-
-  if(S.isHost && guest && room.status === 'waiting') {
-    S.roomRef.update({ status: 'playing' }).catch(()=>{});
-  }
-
-  if(S.isHost && guest && S.phase === 'waiting') {
-    const waitStatus = document.getElementById('waitStatus');
-    if(waitStatus) waitStatus.textContent = `${guest.name || 'Partner'} joined!`;
-    toast(`${guest.name || 'Partner'} joined! 🎬`);
-    setTimeout(() => { setupSwipe(); show('swipeScreen'); }, 500);
-  }
-
+  if(S.phase === 'waiting') updateWaitingRoomUI(room);
   if(S.phase === 'done') updateDoneWaitStatus(room);
 
-  if(roomHasBothDone(room) && !S.matchesShown) {
+  if(room.status === 'playing' && S.phase === 'waiting') {
+    setupSwipe();
+    show('swipeScreen');
+  }
+
+  if(roomHasAllDone(room) && !S.matchesShown) {
     if(room.votes?.[S.playerId]) S.myVotes = room.votes[S.playerId];
-    S.partnerVotes = room.votes?.[S.partnerId] || {};
+    S.allVotes = room.votes || {};
+    const otherId = partnerIdFor(S.playerId);
+    S.partnerVotes = otherId ? (room.votes?.[otherId] || {}) : {};
     showMatches();
   }
 
-  const modeHost = room.modeChoices?.host;
-  const modeGuest = room.modeChoices?.guest;
-  if(modeHost && modeGuest && !room.finalMode) {
-    const finalMode = deterministicChoice(modeHost, modeGuest);
+  const finalMode = finalModeFromChoices(room);
+  if(finalMode && !room.finalMode) {
+    // transaction avoids duplicate writes if several players arrive here together
     S.roomRef.child('finalMode').transaction(current => current || finalMode).catch(()=>{});
   }
 
@@ -953,15 +1022,28 @@ function onRoomUpdate(room) {
     launchMode(room.finalMode);
   }
 
-  const myRank = room.rankings?.[S.playerId];
-  const otherRank = room.rankings?.[S.partnerId];
-  if(myRank && otherRank && !S.winnerShown) {
-    partnerRanking = otherRank;
+  const ids = getActivePlayerIds(room);
+  const rankings = room.rankings || {};
+  if(ids.length >= 2 && ids.every(id => rankings[id]) && !S.winnerShown) {
     showWinner();
   }
 
   if(room.winner && !S.winnerShown) {
     showWinnerMovie(room.winner.movie, room.winner.banner, room.winner.sub);
+  }
+}
+
+async function startOnlineGame() {
+  if(!S.isHost || !S.roomRef) return;
+  try {
+    const snap = await S.roomRef.get();
+    const room = snap.val();
+    const ids = getActivePlayerIds(room);
+    if(ids.length < 2) { toast('Need at least 2 players'); return; }
+    await S.roomRef.update({ status: 'playing', started: Date.now() });
+  } catch(e) {
+    console.error(e);
+    toast('Could not start game.');
   }
 }
 
@@ -971,8 +1053,8 @@ function onRoomUpdate(room) {
 async function createRoom() {
   const name = document.getElementById('createName').value.trim();
   if(!name){toast('Enter your name');return;}
-  S.myName=name; S.isHost=true; S.online=true; S.playerId='host'; S.partnerId='guest';
-  S.myVotes={}; S.partnerVotes=null; S.matchesShown=false; S.winnerShown=false;
+  S.myName=name; S.isHost=true; S.online=true; S.playerId='host'; S.partnerId='';
+  S.myVotes={}; S.partnerVotes=null; S.allVotes=null; S.matchesShown=false; S.winnerShown=false;
   showLoad('Fetching movies...');
   try {
     S.movies = await fetchMovies();
@@ -981,10 +1063,11 @@ async function createRoom() {
       hostName: name,
       created: Date.now(),
       status: 'waiting',
-      settings: { genre: cfg.genre, count: cfg.count },
+      maxPlayers: cfg.players,
+      settings: { genre: cfg.genre, count: cfg.count, players: cfg.players },
       movies: S.movies,
       players: {
-        host: { name, joined: Date.now(), done: false }
+        host: { name, joined: Date.now(), done: false, host: true }
       }
     };
     const createdRoom = await createUniqueRoom(roomData);
@@ -993,8 +1076,9 @@ async function createRoom() {
     S.phase = 'waiting';
     document.getElementById('displayCode').textContent = S.roomCode;
     const waitStatus = document.getElementById('waitStatus');
-    if(waitStatus) waitStatus.textContent = 'Waiting for partner...';
+    if(waitStatus) waitStatus.textContent = 'Waiting for players...';
     startRoomListener();
+    updateWaitingRoomUI(roomData);
     hideLoad();
     show('waitingScreen');
   } catch(e) {
@@ -1012,8 +1096,8 @@ async function joinRoom() {
   const code  = document.getElementById('joinCode').value.trim().toUpperCase();
   if(!name){toast('Enter your name');return;}
   if(code.length<4){toast('Enter the room code');return;}
-  S.myName=name; S.isHost=false; S.online=true; S.playerId='guest'; S.partnerId='host';
-  S.roomCode=code; S.myVotes={}; S.partnerVotes=null; S.matchesShown=false; S.winnerShown=false;
+  S.myName=name; S.isHost=false; S.online=true; S.playerId=''; S.partnerId='';
+  S.roomCode=code; S.myVotes={}; S.partnerVotes=null; S.allVotes=null; S.matchesShown=false; S.winnerShown=false;
   showLoad('Finding room...');
   document.getElementById('joinErr').classList.remove('show');
   try {
@@ -1025,29 +1109,55 @@ async function joinRoom() {
       document.getElementById('joinErr').classList.add('show');
       return;
     }
-    const roomData = snap.val();
-    if(roomData.players?.guest){
+    const initialRoom = snap.val();
+    if(initialRoom.status !== 'waiting'){
       hideLoad();
-      document.getElementById('joinErr').textContent='Room is already full.';
+      document.getElementById('joinErr').textContent='Room already started.';
       document.getElementById('joinErr').classList.add('show');
       return;
     }
-    if(!roomData.movies || !roomData.movies.length){
+    if(!initialRoom.movies || !initialRoom.movies.length){
       hideLoad();
       document.getElementById('joinErr').textContent='Room data is missing.';
       document.getElementById('joinErr').classList.add('show');
       return;
     }
-    S.roomRef = ref;
-    S.movies = roomData.movies;
-    await ref.update({
-      status: 'playing',
-      'players/guest': { name, joined: Date.now(), done: false }
+
+    let joinedId = '';
+    const tx = await ref.transaction(room => {
+      if(!room || room.status !== 'waiting') return;
+      room.players = room.players || {};
+      const max = Math.max(2, Math.min(8, room.maxPlayers || room.settings?.players || 2));
+      const existing = Object.keys(room.players).filter(id => room.players[id] && !room.players[id].left);
+      if(existing.length >= max) return;
+      for(let i = 2; i <= max; i++) {
+        const id = `p${i}`;
+        if(!room.players[id]) {
+          joinedId = id;
+          room.players[id] = { name, joined: Date.now(), done: false };
+          break;
+        }
+      }
+      if(!joinedId) return;
+      return room;
     });
+
+    if(!tx.committed || !joinedId) {
+      hideLoad();
+      document.getElementById('joinErr').textContent='Room is full or already started.';
+      document.getElementById('joinErr').classList.add('show');
+      return;
+    }
+
+    S.roomRef = ref;
+    S.playerId = joinedId;
+    S.movies = (tx.snapshot.val() || initialRoom).movies;
+    S.phase = 'waiting';
+    document.getElementById('displayCode').textContent = S.roomCode;
     startRoomListener();
+    updateWaitingRoomUI(tx.snapshot.val());
     hideLoad();
-    setupSwipe();
-    show('swipeScreen');
+    show('waitingScreen');
   } catch(e) {
     hideLoad();
     toast('Error joining room.');
@@ -1248,17 +1358,25 @@ function showMatches() {
   if(S.matchesShown && S.phase === 'matching') return;
   S.matchesShown = true;
 
-  const pv=S.partnerVotes||{};
+  const room = S.lastRoomData || {};
+  const ids = S.online ? getActivePlayerIds(room) : [];
+  const allVotes = S.online ? (S.allVotes || room.votes || {}) : null;
   const perfectMatches=[];
   const maybeMatches=[];
 
   S.movies.forEach(m => {
-    const mine = S.myVotes[m.id];
-    const theirs = pv[m.id];
-    if(mine === true && theirs === true) {
-      perfectMatches.push({...m, matchKind:'perfect'});
-    } else if((mine === true || mine === 'maybe') && (theirs === true || theirs === 'maybe')) {
-      maybeMatches.push({...m, matchKind:'maybe'});
+    if(S.online && ids.length >= 2) {
+      const votes = ids.map(id => allVotes?.[id]?.[m.id]);
+      const allYes = votes.every(v => v === true);
+      const allPositive = votes.every(v => v === true || v === 'maybe');
+      if(allYes) perfectMatches.push({...m, matchKind:'perfect'});
+      else if(allPositive) maybeMatches.push({...m, matchKind:'maybe'});
+    } else {
+      const pv=S.partnerVotes||{};
+      const mine = S.myVotes[m.id];
+      const theirs = pv[m.id];
+      if(mine === true && theirs === true) perfectMatches.push({...m, matchKind:'perfect'});
+      else if((mine === true || mine === 'maybe') && (theirs === true || theirs === 'maybe')) maybeMatches.push({...m, matchKind:'maybe'});
     }
   });
 
@@ -1267,19 +1385,20 @@ function showMatches() {
   const sub=document.getElementById('matchSub');
   list.innerHTML='';
   const banner = document.querySelector('.match-banner');
+  const groupWord = S.online && ids.length > 2 ? 'Everyone' : 'You both';
 
   if(!matches.length){
     banner.style.background = 'linear-gradient(135deg,#e63c64,#ff6b35)';
     banner.style.webkitBackgroundClip = 'text';
     banner.innerHTML = 'NO<br>MATCH 😕';
-    sub.textContent='No shared yes or maybe picks this time!';
+    sub.textContent = S.online && ids.length > 2 ? 'No movie matched the whole group this time!' : 'No shared yes or maybe picks this time!';
     list.innerHTML='<div class="no-match">Try another round!</div>';
   } else {
     banner.style.background = 'linear-gradient(135deg,var(--match),#00b8ff)';
     banner.style.webkitBackgroundClip = 'text';
     banner.innerHTML = "IT'S A<br>MATCH!";
     if(perfectMatches.length && maybeMatches.length) sub.textContent=`${perfectMatches.length} yes match${perfectMatches.length>1?'es':''} · ${maybeMatches.length} maybe`;
-    else if(perfectMatches.length) sub.textContent=perfectMatches.length===1?'You both want to watch':'You both said yes to these';
+    else if(perfectMatches.length) sub.textContent=perfectMatches.length===1?`${groupWord} want to watch this`:`${groupWord} said yes to these`;
     else sub.textContent=maybeMatches.length===1?'You have one maybe match':'You have maybe matches';
 
     matches.forEach((m,i)=>{
@@ -1289,7 +1408,7 @@ function showMatches() {
       el.style.animationDelay=`${i*.1}s`;
       el.innerHTML=`
         <img class="match-poster" src="${m.poster}" alt="${m.title}"
-          onerror="this.outerHTML='<div class=\"match-emoji-box\">${m.emoji}</div>'">
+          onerror="this.outerHTML='<div class=&quot;match-emoji-box&quot;>${m.emoji}</div>'">
         <div>
           <div class="match-title">${m.title}</div>
           <div class="match-meta">⭐ ${m.rating} · ${m.year}</div>
@@ -1445,24 +1564,35 @@ function getMyRankMap() {
 }
 
 function showWinner() {
-  const myRanks = getMyRankMap();
-  const otherRanks = partnerRanking || {};
-  const scores = {};
-  matchedMovies.forEach(m => {
-    const mine = myRanks[m.id] ?? 99;
-    const theirs = otherRanks[m.id] ?? 99;
-    scores[m.id] = mine + theirs;
-  });
+  let scores = {};
+
+  if(S.online) {
+    const room = S.lastRoomData || {};
+    const ids = getActivePlayerIds(room);
+    const rankings = room.rankings || {};
+    matchedMovies.forEach(m => {
+      scores[m.id] = ids.reduce((sum, id) => sum + (rankings[id]?.[m.id] ?? 99), 0);
+    });
+  } else {
+    const myRanks = getMyRankMap();
+    const otherRanks = partnerRanking || {};
+    matchedMovies.forEach(m => {
+      const mine = myRanks[m.id] ?? 99;
+      const theirs = otherRanks[m.id] ?? 99;
+      scores[m.id] = mine + theirs;
+    });
+  }
+
   const winner = matchedMovies.reduce((best, m) => scores[m.id] < scores[best.id] ? m : best);
   if(S.online && S.roomRef) {
     S.roomRef.child('winner').transaction(current => current || {
       movie: winner,
       banner: '🏆 YOUR|PICK!',
-      sub: 'Both ranked this the highest',
+      sub: 'Best combined ranking',
       created: Date.now()
     }).catch(()=>{});
   }
-  showWinnerMovie(winner, '🏆 YOUR|PICK!', 'Both ranked this the highest');
+  showWinnerMovie(winner, '🏆 YOUR|PICK!', 'Best combined ranking');
 }
 
 // ════════════════════════════════════════════════════════
@@ -1843,6 +1973,10 @@ function showLocalMatches() {
 // ════════════════════════════════════════════════════════
 //  HELPERS
 // ════════════════════════════════════════════════════════
+function escapeHtml(s) {
+  return String(s).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+}
+
 function genCode() {
   const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({length:5},()=>c[Math.floor(Math.random()*c.length)]).join('');
@@ -1882,7 +2016,7 @@ function playAgain(){
   if(oldRoomRef){try{oldRoomRef.remove().catch(()=>{});}catch(e){}}
   localGame = { active:false, players:[], votes:[], currentTurn:0 };
   matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
-  S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.roomRef=null;S.lastRoomData=null;S.online=false;S.playerId='';S.partnerId='';S.matchesShown=false;S.winnerShown=false;S.phase='idle';
+  S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.allVotes=null;S.roomRef=null;S.lastRoomData=null;S.online=false;S.playerId='';S.partnerId='';S.matchesShown=false;S.winnerShown=false;S.phase='idle';
   document.getElementById('createName').value='';
   document.getElementById('joinName').value='';
   document.getElementById('joinCode').value='';

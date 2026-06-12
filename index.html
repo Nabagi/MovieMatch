@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MovieMatch">
 <title>MovieMatch</title>
-<!-- version: online-multiplayer-2-8 + maybe + accounts + robust-results 2026-06-12 -->
+<!-- version: online-multiplayer-2-8 + maybe + accounts + watched-dashboard 2026-06-12 -->
 <!-- Firebase-room version: online rooms no longer rely on PeerJS/WebRTC. -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
@@ -335,6 +335,22 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .auth-mini{font-size:11px;color:var(--muted);text-align:center;line-height:1.5}
 .auth-link{background:none;border:none;color:var(--accent2);font-family:'DM Sans';font-size:12px;cursor:pointer;padding:2px;text-decoration:underline;text-underline-offset:3px}
 
+
+
+/* ── WATCHED DASHBOARD ── */
+.watch-note{font-size:12px;color:var(--muted);line-height:1.6;text-align:center;margin-top:-4px;margin-bottom:2px}
+.watch-count{font-size:11px;color:var(--accent2);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:8px}
+.watch-list{width:100%;display:flex;flex-direction:column;gap:9px;max-height:52vh;overflow-y:auto;padding-right:2px;margin:6px 0 10px}
+.watch-row{width:100%;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:9px;text-align:left}
+.watch-poster{width:42px;height:60px;border-radius:7px;object-fit:cover;background:var(--surface);flex-shrink:0}
+.watch-poster-fallback{width:42px;height:60px;border-radius:7px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.watch-info{flex:1;min-width:0}
+.watch-title{font-family:'Bebas Neue';font-size:16px;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.watch-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.watch-remove{width:auto;padding:8px 10px;border-radius:10px;background:rgba(0,212,160,.1);border:1px solid rgba(0,212,160,.22);color:var(--match);font-family:'DM Sans';font-size:12px;cursor:pointer;flex-shrink:0}
+.watch-remove:hover{background:rgba(0,212,160,.16)}
+.watch-empty{width:100%;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+
 /* scrollbar */
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
@@ -363,6 +379,22 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
       <button class="big-btn big-btn-start" onclick="showStep('stepCreate')">🎬 Start a Room</button>
       <button class="big-btn big-btn-join" onclick="showStep('stepJoin')">🔗 Join a Room</button>
       <button class="big-btn big-btn-local" onclick="showStep('stepLocal')">📱 Local Game</button>
+      <button class="btn btn-secondary" onclick="openWatchedDashboard()">👁 Manage Already Watched</button>
+    </div>
+  </div>
+
+  <!-- STEP: WATCHED DASHBOARD -->
+  <div class="step" id="stepWatched">
+    <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
+    <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:12px">
+      <div class="step-title">Already Watched</div>
+      <div class="watch-note" id="watchNote">Movies here will not show again when you create a room.</div>
+      <div class="watch-count" id="watchCount">Loading...</div>
+      <div class="watch-list" id="watchList">
+        <div class="watch-empty">Loading your list...</div>
+      </div>
+      <button class="btn btn-secondary" id="clearWatchedBtn" onclick="clearHiddenMovies()">Clear All</button>
     </div>
   </div>
 
@@ -1000,6 +1032,116 @@ function markAlreadyWatched(event) {
   saveHiddenMovie(movie);
   toast('Saved — won’t show again 👁');
   flyOut(card, 'left');
+}
+
+let watchedInfoCache = {};
+
+async function getWatchedMovieInfo(id) {
+  id = String(id);
+  if(watchedInfoCache[id]) return watchedInfoCache[id];
+
+  // Reuse movies already loaded in this session first.
+  const localMovie = (S.movies || []).find(m => String(m.id) === id);
+  if(localMovie) {
+    watchedInfoCache[id] = localMovie;
+    return localMovie;
+  }
+
+  try {
+    const m = await tmdb(`/movie/${encodeURIComponent(id)}`);
+    const info = {
+      id: m.id || id,
+      title: m.title || `Movie ${id}`,
+      year: m.release_date ? m.release_date.slice(0,4) : '—',
+      rating: m.vote_average ? Number(m.vote_average).toFixed(1) : '—',
+      poster: m.poster_path ? IMG_BASE + m.poster_path : '',
+      emoji: '🎬'
+    };
+    watchedInfoCache[id] = info;
+    return info;
+  } catch(e) {
+    const fallback = { id, title: `Movie ${id}`, year: '—', rating: '—', poster: '', emoji: '🎬' };
+    watchedInfoCache[id] = fallback;
+    return fallback;
+  }
+}
+
+async function openWatchedDashboard() {
+  showStep('stepWatched');
+  await renderWatchedDashboard(true);
+}
+
+async function renderWatchedDashboard(forceSync = false) {
+  const list = document.getElementById('watchList');
+  const count = document.getElementById('watchCount');
+  const clearBtn = document.getElementById('clearWatchedBtn');
+  const note = document.getElementById('watchNote');
+  if(!list) return;
+
+  list.innerHTML = '<div class="watch-empty">Loading your list...</div>';
+  if(note) note.textContent = S.authUser
+    ? 'Synced to your account. Remove a movie here if you want it to appear again.'
+    : 'Saved on this phone. Log in to sync this list across devices.';
+
+  await ensureHiddenMoviesLoaded(forceSync);
+  const ids = [...hiddenMovieIds].filter(Boolean);
+  if(count) count.textContent = `${ids.length} movie${ids.length === 1 ? '' : 's'} hidden`;
+  if(clearBtn) clearBtn.style.display = ids.length ? 'block' : 'none';
+
+  if(!ids.length) {
+    list.innerHTML = '<div class="watch-empty">No already-watched movies yet.<br>Tap 👁 Already watched while swiping to add one.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  for(const id of ids) {
+    const movie = await getWatchedMovieInfo(id);
+    const row = document.createElement('div');
+    row.className = 'watch-row';
+    const poster = movie.poster
+      ? `<img class="watch-poster" src="${movie.poster}" alt="${escapeHtml(movie.title)}" onerror="this.outerHTML='<div class=&quot;watch-poster-fallback&quot;>🎬</div>'">`
+      : '<div class="watch-poster-fallback">🎬</div>';
+    row.innerHTML = `
+      ${poster}
+      <div class="watch-info">
+        <div class="watch-title">${escapeHtml(movie.title)}</div>
+        <div class="watch-meta">⭐ ${escapeHtml(movie.rating || '—')} · ${escapeHtml(movie.year || '—')}</div>
+      </div>
+      <button class="watch-remove" onclick="removeHiddenMovie('${String(id).replace(/[^0-9]/g,'')}')">Show again</button>`;
+    list.appendChild(row);
+  }
+}
+
+async function removeHiddenMovie(id) {
+  id = String(id);
+  if(!id) return;
+  await ensureHiddenMoviesLoaded();
+  hiddenMovieIds.delete(id);
+  saveHiddenToLocal();
+
+  if(S.authUser && S.db) {
+    try { await S.db.ref(`users/${S.authUser.uid}/hiddenMovies/${id}`).remove(); }
+    catch(e) { console.warn('Could not remove hidden movie from account', e); }
+  }
+
+  toast('Movie will show again ✅');
+  renderWatchedDashboard(false);
+}
+
+async function clearHiddenMovies() {
+  await ensureHiddenMoviesLoaded();
+  if(!hiddenMovieIds.size) return;
+  if(!confirm('Show all already-watched movies again?')) return;
+
+  hiddenMovieIds.clear();
+  saveHiddenToLocal();
+  if(S.authUser && S.db) {
+    try { await S.db.ref(`users/${S.authUser.uid}/hiddenMovies`).remove(); }
+    catch(e) { console.warn('Could not clear account hidden movies', e); }
+  }
+
+  toast('Already watched list cleared');
+  renderWatchedDashboard(false);
 }
 
 // ════════════════════════════════════════════════════════

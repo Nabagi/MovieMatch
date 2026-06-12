@@ -124,6 +124,10 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   border-radius:8px;padding:6px 14px;color:var(--accent2);
   font-family:'DM Sans';font-size:12px;cursor:pointer;transition:background .2s;display:inline-block}
 .copy-btn:hover{background:rgba(245,166,35,.2)}
+.invite-actions{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:8px}
+.invite-actions .copy-btn{flex:1;min-width:130px}
+.copy-btn-alt{background:rgba(255,255,255,.05);border-color:var(--border);color:var(--text)}
+.copy-btn-alt:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)}
 .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;
   background:var(--accent);margin-right:8px;animation:pulse 1.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
@@ -184,6 +188,9 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .act-no:hover{background:var(--accent);transform:scale(1.1)}
 .act-yes{width:72px;height:72px;background:var(--surface);border:2px solid var(--match);font-size:32px}
 .act-yes:hover{background:var(--match);transform:scale(1.1)}
+.act-undo{width:54px;height:54px;background:var(--surface);border:2px solid var(--accent2);font-size:24px;color:var(--accent2)}
+.act-undo:hover:not(:disabled){background:rgba(245,166,35,.16);transform:scale(1.08)}
+.act-undo:disabled{opacity:.28;cursor:default;transform:none!important}
 .hint{font-size:11px;color:var(--muted);letter-spacing:1px;flex-shrink:0;padding-bottom:4px}
 
 /* ── DONE WAIT ── */
@@ -448,7 +455,10 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   <div class="wait-card">
     <div class="code-label">Room Code</div>
     <div class="room-code" id="displayCode">----</div>
-    <button class="copy-btn" onclick="copyCode()">📋 Share Invite</button>
+    <div class="invite-actions">
+      <button class="copy-btn" onclick="copyCode()">🔗 Share Link</button>
+      <button class="copy-btn copy-btn-alt" onclick="copyRoomCode()">📋 Copy Code</button>
+    </div>
     <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.65">
       Share this invite with your partner.<br>
       You'll both swipe the same movies independently.<br>
@@ -482,7 +492,8 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     </div>
   </div>
   <div class="act-row">
-    <button class="act-btn act-no"  onclick="swipeBtn('no')"  title="Skip">✕</button>
+    <button class="act-btn act-no" onclick="swipeBtn('no')" title="Skip">✕</button>
+    <button class="act-btn act-undo" id="undoBtn" onclick="undoLastSwipe()" title="Undo last swipe" disabled>↶</button>
     <button class="act-btn act-yes" onclick="swipeBtn('yes')" title="Watch it!">♥</button>
   </div>
   <div class="hint">Swipe right to watch · left to skip</div>
@@ -636,6 +647,7 @@ let S = {
   online:false, playerId:'', partnerId:'',
   movies:[], idx:0, myVotes:{}, partnerVotes:null,
   roomRef:null, roomListener:null, lastRoomData:null,
+  lastSwipe:null,
   matchesShown:false, winnerShown:false,
   phase:'idle', // idle, waiting, swiping, done, matching, ranking
 };
@@ -966,6 +978,8 @@ async function joinRoom() {
 function setupSwipe() {
   S.phase='swiping';
   S.idx=0;
+  S.lastSwipe=null;
+  updateUndoButton();
   document.getElementById('myBadge').textContent=S.myName;
   renderCards();
 }
@@ -975,6 +989,7 @@ function renderCards() {
   stack.querySelectorAll('.mv-card').forEach(c=>c.remove());
   if(S.idx>=S.movies.length){finishSwiping();return;}
   updateProg();
+  updateUndoButton();
   if(S.idx+1<S.movies.length) stack.appendChild(buildCard(S.movies[S.idx+1],false));
   const active=buildCard(S.movies[S.idx],true);
   stack.appendChild(active);
@@ -1087,15 +1102,41 @@ function swipeBtn(dir) {
 }
 
 function recordVote(id,liked) {
+  S.lastSwipe = { id, liked, idx: S.idx };
   S.myVotes[id]=liked;
   S.idx++;
+  updateUndoButton();
   setTimeout(renderCards,80);
+}
+
+function undoLastSwipe() {
+  if(!S.lastSwipe || S.phase !== 'swiping') {
+    toast('Nothing to undo');
+    return;
+  }
+
+  const last = S.lastSwipe;
+  delete S.myVotes[last.id];
+  S.idx = last.idx;
+  S.lastSwipe = null;
+
+  updateUndoButton();
+  renderCards();
+  toast('Last swipe undone ↶');
+}
+
+function updateUndoButton() {
+  const btn = document.getElementById('undoBtn');
+  if(!btn) return;
+  btn.disabled = !(S.lastSwipe && S.phase === 'swiping');
 }
 
 // ════════════════════════════════════════════════════════
 //  FINISH & MATCHES
 // ════════════════════════════════════════════════════════
 function finishSwiping() {
+  S.lastSwipe=null;
+  updateUndoButton();
   if(localGame.active) { finishLocalTurn(); return; }
   S.phase='done';
   stopPreview();
@@ -1612,6 +1653,8 @@ function continueLocalGame() {
   S.online = false;
   S.phase = 'swiping';
   S.idx = 0;
+  S.lastSwipe = null;
+  updateUndoButton();
   document.getElementById('myBadge').textContent = name;
   renderCards();
   show('swipeScreen');
@@ -1715,13 +1758,29 @@ async function copyCode(){
   } catch(e) {}
   navigator.clipboard.writeText(link).then(()=>toast('Invite link copied! 📋')).catch(()=>toast(`Code: ${S.roomCode}`));
 }
+
+async function copyRoomCode(){
+  const code = (S.roomCode || document.getElementById('displayCode')?.textContent || '').trim();
+
+  if(!code || code === '----') {
+    toast('No room code yet');
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(code);
+    toast('Room code copied! 📋');
+  } catch(e) {
+    toast(`Room code: ${code}`, 5000);
+  }
+}
 function playAgain(){
   const oldRoomRef = S.online ? S.roomRef : null;
   stopRoomListener();
   if(oldRoomRef){try{oldRoomRef.remove().catch(()=>{});}catch(e){}}
   localGame = { active:false, players:[], votes:[], currentTurn:0 };
   matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
-  S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.roomRef=null;S.lastRoomData=null;S.online=false;S.playerId='';S.partnerId='';S.matchesShown=false;S.winnerShown=false;S.phase='idle';
+  S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.lastSwipe=null;updateUndoButton();S.roomRef=null;S.lastRoomData=null;S.online=false;S.playerId='';S.partnerId='';S.matchesShown=false;S.winnerShown=false;S.phase='idle';
   document.getElementById('createName').value='';
   document.getElementById('joinName').value='';
   document.getElementById('joinCode').value='';

@@ -1775,7 +1775,7 @@ function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.re
 function showLoad(t){document.getElementById('loadTxt').textContent=t||'Loading...';document.getElementById('overlay').classList.add('show');}
 function hideLoad(){document.getElementById('overlay').classList.remove('show');}
 function toast(msg,d=2800){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
-async async function copyCode(){
+async function copyCode(){
   const link = getInviteLink();
   try {
     if(navigator.share) {

@@ -170,6 +170,11 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .card-tag{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
   border-radius:20px;padding:3px 10px;font-size:10px;color:rgba(255,255,255,.7);
   letter-spacing:.5px;white-space:nowrap}
+.watched-btn{margin-top:10px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;padding:7px 12px;color:rgba(255,255,255,.82);font-family:'DM Sans';
+  font-size:11px;letter-spacing:.4px;cursor:pointer;transition:all .18s;position:relative;z-index:30}
+.watched-btn:hover{background:rgba(245,166,35,.16);border-color:rgba(245,166,35,.35);color:var(--accent2)}
+.watched-btn:disabled{opacity:.45;cursor:default}
 .card-genre{display:inline-block;background:rgba(230,60,100,.2);
   border:1px solid rgba(230,60,100,.35);border-radius:20px;
   padding:3px 10px;font-size:10px;color:var(--accent);
@@ -374,7 +379,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
       <button class="btn btn-primary" id="authSubmit" onclick="submitAuth()">Log In</button>
       <button class="btn btn-secondary" id="authSwitch" onclick="toggleAuthMode()">Create an account instead</button>
       <button class="auth-link" onclick="resetPassword()">Forgot password?</button>
-      <div class="auth-mini">You can still play as guest. Login only saves your name for now.</div>
+      <div class="auth-mini">You can still play as guest. Login saves your name and hidden movies.</div>
     </div>
   </div>
 
@@ -755,6 +760,9 @@ function initFirebase(cfg) {
 // ════════════════════════════════════════════════════════
 let authMode = 'login';
 let authReady = false;
+let hiddenMovieIds = new Set();
+let hiddenLoadedFor = '';
+
 
 function initAuth() {
   if(!S.auth) return;
@@ -764,6 +772,7 @@ function initAuth() {
     authReady = true;
     applyAccountName();
     updateAuthUI();
+    ensureHiddenMoviesLoaded(true).catch(e => console.warn('Hidden movie sync failed', e));
   });
 }
 
@@ -900,6 +909,99 @@ async function resetPassword() {
   }
 }
 
+
+// ════════════════════════════════════════════════════════
+//  ALREADY WATCHED / DON'T SHOW AGAIN
+// ════════════════════════════════════════════════════════
+function hiddenOwnerKey() {
+  return S.authUser?.uid ? `uid:${S.authUser.uid}` : 'guest';
+}
+
+function hiddenStorageKey(owner = hiddenOwnerKey()) {
+  return `moviematch_hiddenMovies_${owner}`;
+}
+
+function loadHiddenFromLocal(owner = hiddenOwnerKey()) {
+  try {
+    const raw = localStorage.getItem(hiddenStorageKey(owner));
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set((Array.isArray(arr) ? arr : []).map(String));
+  } catch(e) {
+    return new Set();
+  }
+}
+
+function saveHiddenToLocal(owner = hiddenOwnerKey()) {
+  try {
+    localStorage.setItem(hiddenStorageKey(owner), JSON.stringify([...hiddenMovieIds]));
+  } catch(e) {}
+}
+
+async function waitForAuthReady(timeoutMs = 1200) {
+  if(!S.auth || authReady) return;
+  const start = Date.now();
+  while(!authReady && Date.now() - start < timeoutMs) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+}
+
+async function ensureHiddenMoviesLoaded(force = false) {
+  await waitForAuthReady();
+  const owner = hiddenOwnerKey();
+  if(!force && hiddenLoadedFor === owner) return;
+  hiddenLoadedFor = owner;
+  hiddenMovieIds = loadHiddenFromLocal(owner);
+
+  if(S.authUser && S.db) {
+    try {
+      const snap = await S.db.ref(`users/${S.authUser.uid}/hiddenMovies`).get();
+      const data = snap.val() || {};
+      Object.keys(data).forEach(id => {
+        if(data[id]) hiddenMovieIds.add(String(id));
+      });
+      saveHiddenToLocal(owner);
+    } catch(e) {
+      // If database rules for users/uid/hiddenMovies are not published yet,
+      // the button still works on this phone through localStorage.
+      console.warn('Could not load account hidden movies', e);
+    }
+  }
+}
+
+async function saveHiddenMovie(movie) {
+  if(!movie || !movie.id) return;
+  await ensureHiddenMoviesLoaded();
+  const id = String(movie.id);
+  hiddenMovieIds.add(id);
+  saveHiddenToLocal();
+
+  if(S.authUser && S.db) {
+    try {
+      await S.db.ref(`users/${S.authUser.uid}/hiddenMovies/${id}`).set(true);
+    } catch(e) {
+      console.warn('Could not sync hidden movie to account', e);
+    }
+  }
+}
+
+function markAlreadyWatched(event) {
+  if(event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  unlockAudio();
+  const btn = event?.currentTarget || null;
+  const card = btn?.closest('.mv-card') || document.querySelector('.mv-card.active');
+  if(!card || !card.classList.contains('active')) return;
+  if(btn) btn.disabled = true;
+
+  const id = parseInt(card.dataset.id, 10);
+  const movie = S.movies.find(m => String(m.id) === String(id)) || { id };
+  saveHiddenMovie(movie);
+  toast('Saved — won’t show again 👁');
+  flyOut(card, 'left');
+}
+
 // ════════════════════════════════════════════════════════
 //  LANDING STEPS
 // ════════════════════════════════════════════════════════
@@ -930,9 +1032,11 @@ async function tmdb(path) {
 }
 
 async function fetchMovies() {
+  await ensureHiddenMoviesLoaded();
+  const hidden = hiddenMovieIds || new Set();
   const genreParam = cfg.genre ? `&with_genres=${cfg.genre}` : '';
   // Use /discover for genre filtering (reliable), fall back to popular lists for "All"
-  const pages = [1, 2, 3, 4];
+  const pages = [1, 2, 3, 4, 5, 6];
   let requests = [];
   if (cfg.genre) {
     // discover/movie fully respects with_genres
@@ -948,7 +1052,7 @@ async function fetchMovies() {
     (res.results||[]).forEach(m=>{
       // Client-side genre check as safety net
       const hasGenre = cfg.genre ? (m.genre_ids||[]).includes(cfg.genre) : true;
-      if(!seen.has(m.id) && m.poster_path && m.overview && hasGenre){
+      if(!hidden.has(String(m.id)) && !seen.has(m.id) && m.poster_path && m.overview && hasGenre){
         seen.add(m.id);
         all.push({
           id:m.id, title:m.title,
@@ -1403,6 +1507,7 @@ function buildCard(m,isActive) {
       <div class="card-title">${m.title}</div>
       <div class="card-meta">⭐ ${m.rating} · ${m.year}</div>
       <div class="card-tags">${(m.genres.slice(0,3).map(g=>GENRE_NAMES[g]).filter(Boolean).map(g=>`<span class="card-tag">${g}</span>`)).join('')}</div>
+      <button class="watched-btn" type="button" onclick="markAlreadyWatched(event)" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()" title="Don't show this movie again">👁 Already watched</button>
     </div>`;
   return el;
 }

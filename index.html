@@ -1071,20 +1071,17 @@ let myModeChoice2 = null;
 let partnerModeChoice2 = null;
 
 function chooseMode(mode) {
-  if(myModeChoice2) return; // already chose
+  if(myModeChoice2) return;
+  // Local game or no connection — just launch immediately
+  if(!S.conn || !S.conn.open) { launchMode(mode); return; }
   myModeChoice2 = mode;
-  // Lock buttons visually
   document.getElementById('btnRank').style.opacity = mode === 'rank' ? '1' : '0.35';
   document.getElementById('btnRand').style.opacity = mode === 'random' ? '1' : '0.35';
   document.getElementById('btnRank').disabled = true;
   document.getElementById('btnRand').disabled = true;
-  // Show waiting hint
   const label = document.querySelector('#modeButtons .mode-waiting');
   if(label) label.style.display = 'block';
-  // Tell partner our choice
   if(S.conn && S.conn.open) S.conn.send({type:'modeChoice', mode});
-  // If host: try to resolve (need partner's choice too)
-  // If guest: just wait for modeFinal from host
   if(S.isHost) tryResolveMode();
 }
 

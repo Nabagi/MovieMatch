@@ -651,7 +651,7 @@ let S = {
   online:false, playerId:'', partnerId:'',
   movies:[], idx:0, myVotes:{}, partnerVotes:null,
   roomRef:null, roomListener:null, lastRoomData:null,
-  matchesShown:false, winnerShown:false,
+  matchesShown:false, winnerShown:false, donePoll:null,
   phase:'idle', // idle, waiting, swiping, done, matching, ranking
 };
 let cfg = { count: 10, genre: 0 };
@@ -807,6 +807,33 @@ function partnerIdFor(id) {
 
 function roomHasBothDone(room) {
   return !!(room?.players?.host?.done && room?.players?.guest?.done && room?.votes?.host && room?.votes?.guest);
+}
+
+async function checkCompletedRoomNow() {
+  if(!S.online || !S.roomRef || S.matchesShown) return;
+  try {
+    const snap = await S.roomRef.get();
+    const room = snap.val();
+    if(room && roomHasBothDone(room)) {
+      S.lastRoomData = room;
+      S.partnerVotes = room.votes?.[S.partnerId] || {};
+      showMatches();
+    }
+  } catch(e) {
+    console.error('Room completion check failed', e);
+  }
+}
+
+function startDoneWaitFallback() {
+  if(S.donePoll) clearInterval(S.donePoll);
+  checkCompletedRoomNow();
+  S.donePoll = setInterval(() => {
+    if(S.phase === 'done' && !S.matchesShown) checkCompletedRoomNow();
+    else {
+      clearInterval(S.donePoll);
+      S.donePoll = null;
+    }
+  }, 1500);
 }
 
 function deterministicChoice(a, b) {
@@ -1145,11 +1172,14 @@ function finishSwiping() {
     updates[`votes/${S.playerId}`] = S.myVotes;
     updates[`players/${S.playerId}/done`] = true;
     updates[`players/${S.playerId}/finished`] = Date.now();
-    S.roomRef.update(updates).catch(e => {
+    S.roomRef.update(updates).then(() => {
+      checkCompletedRoomNow();
+    }).catch(e => {
       console.error(e);
       toast('Could not save votes. Check connection.');
     });
     show('doneWaitScreen');
+    startDoneWaitFallback();
     return;
   }
 
@@ -1166,6 +1196,7 @@ function isMaybeVote(v) {
 }
 
 function showMatches() {
+  if(S.donePoll) { clearInterval(S.donePoll); S.donePoll = null; }
   S.matchesShown = true;
   const pv=S.partnerVotes||{};
   const perfectMatches=[];
@@ -1806,7 +1837,7 @@ function playAgain(){
   stopRoomListener();
   if(oldRoomRef){try{oldRoomRef.remove().catch(()=>{});}catch(e){}}
   localGame = { active:false, players:[], votes:[], currentTurn:0 };
-  matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
+  if(S.donePoll){clearInterval(S.donePoll);S.donePoll=null;} matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
   S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.roomRef=null;S.lastRoomData=null;S.online=false;S.playerId='';S.partnerId='';S.matchesShown=false;S.winnerShown=false;S.phase='idle';
   document.getElementById('createName').value='';
   document.getElementById('joinName').value='';

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MovieMatch">
 <title>MovieMatch</title>
-<!-- version: maybe + done-wait-fallback 2026-06-12 -->
+<!-- version: maybe + robust-results-fixed 2026-06-12 -->
 <!-- Firebase-room version: online rooms no longer rely on PeerJS/WebRTC. -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
@@ -496,7 +496,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
       <div class="stamp stamp-maybe" id="stampMaybe">MAYBE</div>
     </div>
   </div>
-  <div class="act-row">
+    <div class="act-row">
     <button class="act-btn act-no" onclick="swipeBtn('no')" title="Skip">✕</button>
     <button class="act-btn act-maybe" onclick="swipeBtn('maybe')" title="Maybe">?</button>
     <button class="act-btn act-yes" onclick="swipeBtn('yes')" title="Watch it!">♥</button>
@@ -789,6 +789,7 @@ function stopRoomListener() {
 function startRoomListener() {
   if(!S.roomRef) return;
   stopRoomListener();
+  if(S.donePoll){clearInterval(S.donePoll);S.donePoll=null;}
   S.roomListener = snap => onRoomUpdate(snap.val());
   S.roomRef.on('value', S.roomListener);
 }
@@ -807,8 +808,33 @@ function partnerIdFor(id) {
   return id === 'host' ? 'guest' : 'host';
 }
 
+function voteCountFor(room, playerId) {
+  const votes = room?.votes?.[playerId];
+  return votes ? Object.keys(votes).length : 0;
+}
+
+function playerFinished(room, playerId) {
+  const doneFlag = room?.players?.[playerId]?.done === true;
+  const voteCount = voteCountFor(room, playerId);
+  const movieCount = room?.movies?.length || S.movies.length || 0;
+  return doneFlag || (movieCount > 0 && voteCount >= movieCount);
+}
+
 function roomHasBothDone(room) {
-  return !!(room && room.players && room.players.host && room.players.guest && room.players.host.done === true && room.players.guest.done === true);
+  return !!(room && room.players?.host && room.players?.guest &&
+    room.votes?.host && room.votes?.guest &&
+    playerFinished(room, 'host') && playerFinished(room, 'guest'));
+}
+
+function updateDoneWaitStatus(room) {
+  const status = document.getElementById('doneWaitStatus');
+  if(!status || !room) return;
+  const movieCount = room?.movies?.length || S.movies.length || 0;
+  const hostDone = playerFinished(room, 'host');
+  const guestDone = playerFinished(room, 'guest');
+  const hostTxt = hostDone ? 'Host ✓' : `Host ${voteCountFor(room,'host')}/${movieCount}`;
+  const guestTxt = guestDone ? 'Guest ✓' : `Guest ${voteCountFor(room,'guest')}/${movieCount}`;
+  status.textContent = `${hostTxt} · ${guestTxt}`;
 }
 
 async function checkCompletedRoomNow(showMessage = false) {
@@ -817,20 +843,21 @@ async function checkCompletedRoomNow(showMessage = false) {
     const snap = await S.roomRef.get();
     const room = snap.val();
     S.lastRoomData = room;
+    if(room?.movies?.length) S.movies = room.movies;
+    updateDoneWaitStatus(room);
 
-    if(room && roomHasBothDone(room)) {
+    if(roomHasBothDone(room)) {
+      const myId = S.playerId;
       const otherId = S.partnerId || partnerIdFor(S.playerId);
+      if(room.votes?.[myId]) S.myVotes = room.votes[myId];
       S.partnerVotes = room.votes?.[otherId] || {};
       showMatches();
       return true;
     }
 
     if(showMessage) {
-      const status = document.getElementById('doneWaitStatus');
       const otherId = S.partnerId || partnerIdFor(S.playerId);
-      const otherDone = !!room?.players?.[otherId]?.done;
-      const msg = otherDone ? 'Almost there...' : 'Partner has not finished yet';
-      if(status) status.textContent = msg;
+      const msg = playerFinished(room, otherId) ? 'Results are almost ready...' : 'Partner has not finished yet';
       toast(msg);
     }
     return false;
@@ -848,14 +875,16 @@ function forceCheckResults() {
 function startDoneWaitFallback() {
   if(S.donePoll) clearInterval(S.donePoll);
   checkCompletedRoomNow();
-  setTimeout(() => checkCompletedRoomNow(), 800);
+  setTimeout(() => checkCompletedRoomNow(), 500);
+  setTimeout(() => checkCompletedRoomNow(), 1200);
+  setTimeout(() => checkCompletedRoomNow(), 2500);
   S.donePoll = setInterval(() => {
     if(S.phase === 'done' && !S.matchesShown) checkCompletedRoomNow();
     else {
       clearInterval(S.donePoll);
       S.donePoll = null;
     }
-  }, 1200);
+  }, 1000);
 }
 
 function deterministicChoice(a, b) {
@@ -906,7 +935,10 @@ function onRoomUpdate(room) {
     setTimeout(() => { setupSwipe(); show('swipeScreen'); }, 500);
   }
 
+  if(S.phase === 'done') updateDoneWaitStatus(room);
+
   if(roomHasBothDone(room) && !S.matchesShown) {
+    if(room.votes?.[S.playerId]) S.myVotes = room.votes[S.playerId];
     S.partnerVotes = room.votes?.[S.partnerId] || {};
     showMatches();
   }
@@ -1090,21 +1122,18 @@ function attachDrag(card) {
     dx = clientX - sx;
     dy = clientY - sy;
     const visualY = dy * 0.35;
-    const rot = dx * .08;
-    card.style.transform = `translateX(${dx}px) translateY(${visualY}px) rotate(${rot}deg)`;
+    card.style.transform = `translateX(${dx}px) translateY(${visualY}px) rotate(${dx*.08}deg)`;
 
-    const xT = 70;
-    const yT = 75;
-    if(dy > yT && Math.abs(dx) < 120) {
-      if(stampM) stampM.style.opacity = Math.min((dy-yT)/70,1);
+    if(dy > 75 && Math.abs(dx) < 120) {
+      if(stampM) stampM.style.opacity = Math.min((dy-75)/70,1);
       stampY.style.opacity = 0;
       stampN.style.opacity = 0;
-    } else if(dx > xT) {
-      stampY.style.opacity = Math.min((dx-xT)/60,1);
+    } else if(dx > 70) {
+      stampY.style.opacity = Math.min((dx-70)/60,1);
       stampN.style.opacity = 0;
       if(stampM) stampM.style.opacity = 0;
-    } else if(dx < -xT) {
-      stampN.style.opacity = Math.min((-dx-xT)/60,1);
+    } else if(dx < -70) {
+      stampN.style.opacity = Math.min((-dx-70)/60,1);
       stampY.style.opacity = 0;
       if(stampM) stampM.style.opacity = 0;
     } else {
@@ -1136,7 +1165,6 @@ function attachDrag(card) {
 
   card.addEventListener('touchend', releaseCard);
 
-  // Mouse support for desktop testing
   let mouseDown = false;
   card.addEventListener('mousedown', e => {
     unlockAudio();
@@ -1160,6 +1188,7 @@ function flyOut(card,dir) {
   if(dir === 'right') { x = 700; rot = 30; vote = true; }
   else if(dir === 'left') { x = -700; rot = -30; vote = false; }
   else { y = 700; rot = 0; vote = 'maybe'; }
+
   card.style.transform=`translateX(${x}px) translateY(${y}px) rotate(${rot}deg)`;
   card.style.opacity='0';
   setTimeout(()=>recordVote(parseInt(card.dataset.id),vote),280);
@@ -1194,16 +1223,20 @@ function finishSwiping() {
     updates[`votes/${S.playerId}`] = S.myVotes;
     updates[`players/${S.playerId}/done`] = true;
     updates[`players/${S.playerId}/finished`] = Date.now();
+
+    show('doneWaitScreen');
+    startDoneWaitFallback();
+
     S.roomRef.update(updates).then(() => {
       checkCompletedRoomNow();
       setTimeout(() => checkCompletedRoomNow(), 800);
       setTimeout(() => checkCompletedRoomNow(), 2500);
     }).catch(e => {
       console.error(e);
-      toast('Could not save votes. Check connection.');
+      toast('Could not save votes. Check Firebase rules.');
+      const status = document.getElementById('doneWaitStatus');
+      if(status) status.textContent = 'Could not save votes';
     });
-    show('doneWaitScreen');
-    startDoneWaitFallback();
     return;
   }
 
@@ -1211,17 +1244,11 @@ function finishSwiping() {
   show('doneWaitScreen');
 }
 
-function isPositiveVote(v) {
-  return v === true || v === 'maybe';
-}
-
-function isMaybeVote(v) {
-  return v === 'maybe';
-}
-
 function showMatches() {
   if(S.donePoll) { clearInterval(S.donePoll); S.donePoll = null; }
+  if(S.matchesShown && S.phase === 'matching') return;
   S.matchesShown = true;
+
   const pv=S.partnerVotes||{};
   const perfectMatches=[];
   const maybeMatches=[];
@@ -1231,7 +1258,7 @@ function showMatches() {
     const theirs = pv[m.id];
     if(mine === true && theirs === true) {
       perfectMatches.push({...m, matchKind:'perfect'});
-    } else if(isPositiveVote(mine) && isPositiveVote(theirs)) {
+    } else if((mine === true || mine === 'maybe') && (theirs === true || theirs === 'maybe')) {
       maybeMatches.push({...m, matchKind:'maybe'});
     }
   });
@@ -1241,6 +1268,7 @@ function showMatches() {
   const sub=document.getElementById('matchSub');
   list.innerHTML='';
   const banner = document.querySelector('.match-banner');
+
   if(!matches.length){
     banner.style.background = 'linear-gradient(135deg,#e63c64,#ff6b35)';
     banner.style.webkitBackgroundClip = 'text';
@@ -1272,6 +1300,7 @@ function showMatches() {
       list.appendChild(el);
     });
   }
+
   S.phase='matching';
   matchedMovies = matches;
   myRanking = []; partnerRanking = null;
@@ -1280,14 +1309,13 @@ function showMatches() {
 
   const btnRank = document.getElementById('btnRank');
   const btnRand = document.getElementById('btnRand');
-  btnRank.disabled = false; btnRank.style.opacity = '1';
-  btnRand.disabled = false; btnRand.style.opacity = '1';
+  if(btnRank) { btnRank.disabled = false; btnRank.style.opacity = '1'; }
+  if(btnRand) { btnRand.disabled = false; btnRand.style.opacity = '1'; }
   const waiting = document.querySelector('#modeButtons .mode-waiting');
   if(waiting) waiting.style.display = 'none';
 
   const modeBtns = document.getElementById('modeButtons');
-  if(matches.length > 1) modeBtns.style.display = 'block';
-  else modeBtns.style.display = 'none';
+  if(modeBtns) modeBtns.style.display = matches.length > 1 ? 'block' : 'none';
 
   show('matchScreen');
 }
@@ -1753,16 +1781,12 @@ function finishLocalTurn() {
 
 function showLocalMatches() {
   const total = localGame.players.length;
-  // Yes = 1 point, Maybe = 0.5 point
+  // Count how many players liked each movie
   const scores = {};
-  const yesCounts = {};
-  const maybeCounts = {};
   S.movies.forEach(m => {
-    yesCounts[m.id] = localGame.votes.filter(v => v[m.id] === true).length;
-    maybeCounts[m.id] = localGame.votes.filter(v => v[m.id] === 'maybe').length;
-    scores[m.id] = yesCounts[m.id] + maybeCounts[m.id] * 0.5;
+    scores[m.id] = localGame.votes.filter(v => v[m.id] === true).length;
   });
-  // Sort by score descending, only include movies with at least one yes/maybe
+  // Sort by score descending, only include movies liked by at least 1
   const ranked = S.movies
     .filter(m => scores[m.id] > 0)
     .sort((a, b) => scores[b.id] - scores[a.id]);
@@ -1787,15 +1811,14 @@ function showLocalMatches() {
     banner.style.background = 'linear-gradient(135deg,#e63c64,#ff6b35)';
     banner.style.webkitBackgroundClip = 'text';
     banner.innerHTML = 'NO<br>MATCH 😕';
-    sub.textContent = 'Nobody chose yes or maybe!';
+    sub.textContent = 'Nobody agreed on anything!';
   } else {
     banner.style.background = 'linear-gradient(135deg,var(--match),#00b8ff)';
     banner.style.webkitBackgroundClip = 'text';
     banner.innerHTML = "GROUP<br>PICKS!";
-    sub.textContent = `${ranked.length} movie${ranked.length>1?'s':''} got yes/maybe votes`;
+    sub.textContent = `${ranked.length} movie${ranked.length>1?'s':''} got votes`;
     ranked.forEach((m, i) => {
-      const yes = yesCounts[m.id];
-      const maybe = maybeCounts[m.id];
+      const score = scores[m.id];
       const el = document.createElement('div');
       el.className = 'match-item';
       el.style.animationDelay = `${i*.1}s`;
@@ -1806,7 +1829,7 @@ function showLocalMatches() {
           <div class="match-title">${m.title}</div>
           <div class="match-meta">⭐ ${m.rating} · ${m.year}</div>
           <div style="font-size:12px;color:var(--match);margin-top:4px">
-            👍 ${yes}/${total} yes · 🤔 ${maybe}/${total} maybe
+            👍 ${score}/${total} players
           </div>
         </div>`;
       list.appendChild(el);
@@ -1843,12 +1866,10 @@ async function copyCode(){
 
 async function copyRoomCode(){
   const code = (S.roomCode || document.getElementById('displayCode')?.textContent || '').trim();
-
   if(!code || code === '----') {
     toast('No room code yet');
     return;
   }
-
   try {
     await navigator.clipboard.writeText(code);
     toast('Room code copied! 📋');
@@ -1861,7 +1882,7 @@ function playAgain(){
   stopRoomListener();
   if(oldRoomRef){try{oldRoomRef.remove().catch(()=>{});}catch(e){}}
   localGame = { active:false, players:[], votes:[], currentTurn:0 };
-  if(S.donePoll){clearInterval(S.donePoll);S.donePoll=null;} matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
+  matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
   S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.roomRef=null;S.lastRoomData=null;S.online=false;S.playerId='';S.partnerId='';S.matchesShown=false;S.winnerShown=false;S.phase='idle';
   document.getElementById('createName').value='';
   document.getElementById('joinName').value='';

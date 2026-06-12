@@ -88,6 +88,10 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .big-btn-join{background:var(--surface);border:1px solid var(--border);color:var(--text)}
 .big-btn-local{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff}
 .big-btn:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3)}
+.local-player-row{display:flex;align-items:center;gap:8px}
+.local-player-row input{flex:1}
+.local-remove{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;flex-shrink:0}
+
 .back-btn{background:none;border:none;color:var(--muted);font-family:'DM Sans';
   font-size:13px;cursor:pointer;padding:4px 0;align-self:flex-start}
 .back-btn:hover{color:var(--text)}
@@ -358,10 +362,17 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     <button class="back-btn" onclick="showStep('stepHome')">← Back</button>
     <div class="logo" style="font-size:clamp(36px,10vw,56px)">MovieMatch</div>
     <div style="width:100%;display:flex;flex-direction:column;gap:14px">
-      <div class="step-title">Player 1 Name</div>
-      <input type="text" id="localName1" placeholder="Enter name" maxlength="20"/>
-      <div class="step-title">Player 2 Name</div>
-      <input type="text" id="localName2" placeholder="Enter name" maxlength="20"/>
+
+      <div class="step-title">Players</div>
+      <div id="localPlayerList" style="display:flex;flex-direction:column;gap:8px">
+        <div class="local-player-row">
+          <input type="text" placeholder="Player 1 name" maxlength="20" class="local-name-input"/>
+        </div>
+        <div class="local-player-row">
+          <input type="text" placeholder="Player 2 name" maxlength="20" class="local-name-input"/>
+        </div>
+      </div>
+      <button class="btn btn-secondary" style="padding:10px" onclick="addLocalPlayer()">+ Add Player</button>
 
       <div class="step-title">Category</div>
       <div class="pill-row" id="localGenrePills" style="flex-wrap:wrap">
@@ -499,8 +510,8 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <!-- ══════════════════════════════════════════════ -->
 <div class="screen" id="rankScreen" style="overflow-y:auto">
 <div class="rank-wrap">
-  <div class="rank-title">RANK IT</div>
-  <div class="rank-sub">Drag your favourites to the top</div>
+  <div class="rank-title" id="rankTitle">RANK IT</div>
+  <div class="rank-sub" id="rankSub">Move your favourites to the top</div>
   <div class="rank-list" id="rankList"></div>
   <button class="btn btn-primary" style="width:100%" onclick="submitRanking()">Submit My Ranking ✓</button>
 </div>
@@ -609,7 +620,7 @@ let S = {
   phase:'idle', // idle, swiping, done, matching, ranking
 };
 let cfg = { count: 10, genre: 0 };
-let localGame = { active:false, player1:'', player2:'', votes1:{}, votes2:{}, turn:1 };
+let localGame = { active:false, players:[], votes:[], currentTurn:0 };
 // ── AUDIO ──
 let currentAudio = null;
 let previewCache = {};
@@ -1114,9 +1125,12 @@ function launchMode(mode) {
 // ════════════════════════════════════════════════════════
 //  RANKING MODE
 // ════════════════════════════════════════════════════════
-function startRanking() {
+function startRanking(playerName) {
   S.phase='ranking';
   myRanking = [...matchedMovies];
+  const name = playerName || S.myName;
+  document.getElementById('rankTitle').textContent = name.toUpperCase();
+  document.getElementById('rankSub').textContent = `${name}, move your favourites to the top`;
   renderRankList();
   show('rankScreen');
 }
@@ -1155,6 +1169,36 @@ function submitRanking() {
   myRankingSubmitted = true;
   const ranks = {};
   myRanking.forEach((m, i) => ranks[m.id] = i);
+
+  // Local game — save ranking and hand off to player 2
+  if(!S.conn || !S.conn.open) {
+    if(!partnerRanking) {
+      // Player 1 just submitted — save and hand off
+      partnerRanking = ranks; // store as partnerRanking temporarily
+      myRankingSubmitted = false; // reset for player 2
+      myRanking = [...matchedMovies]; // reset ranking for player 2
+      // Show handoff
+      document.getElementById('handoffTitle').textContent = `Nice ${localGame.player1 || S.myName}!`;
+      document.getElementById('handoffSub').textContent = `Now pass to ${localGame.player2}, it\'s their turn to rank!`;
+      document.getElementById('handoffBtn').textContent = `I\'m ${localGame.player2} 🎬`;
+      // On handoff continue: player 2 ranks
+      document.getElementById('handoffBtn').onclick = () => {
+        startRanking(localGame.player2);
+      };
+      show('handoffScreen');
+    } else {
+      // Player 2 just submitted — compare and show winner
+      const player2Ranks = ranks;
+      const player1Ranks = partnerRanking;
+      partnerRanking = player2Ranks;
+      myRanking = matchedMovies.map((m, i) => ({...m, _pos: player1Ranks[m.id] ?? i}))
+        .sort((a, b) => a._pos - b._pos);
+      showWinner();
+    }
+    return;
+  }
+
+  // Online game
   if(S.conn && S.conn.open) S.conn.send({type:'ranking', ranks});
   if(partnerRanking) {
     showWinner();
@@ -1389,6 +1433,17 @@ async function startSlideshow(movie) {
 // ════════════════════════════════════════════════════════
 let localCfg = { genre: 0, count: 10 };
 
+function addLocalPlayer() {
+  const list = document.getElementById('localPlayerList');
+  const count = list.querySelectorAll('.local-player-row').length + 1;
+  if(count > 8) { toast('Max 8 players'); return; }
+  const row = document.createElement('div');
+  row.className = 'local-player-row';
+  row.innerHTML = `<input type="text" placeholder="Player ${count} name" maxlength="20" class="local-name-input"/>
+    <button class="local-remove" onclick="this.parentElement.remove()">✕</button>`;
+  list.appendChild(row);
+}
+
 function setPillGroup(groupId, val, el) {
   document.getElementById(groupId).querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
   el.classList.add('sel');
@@ -1397,82 +1452,132 @@ function setPillGroup(groupId, val, el) {
 }
 
 async function startLocalGame() {
-  const n1 = document.getElementById('localName1').value.trim();
-  const n2 = document.getElementById('localName2').value.trim();
-  if(!n1) { toast('Enter Player 1 name'); return; }
-  if(!n2) { toast('Enter Player 2 name'); return; }
-  localGame.player1 = n1;
-  localGame.player2 = n2;
-  localGame.votes1 = {};
-  localGame.votes2 = {};
-  localGame.turn = 1;
+  const names = [...document.querySelectorAll('.local-name-input')]
+    .map(i => i.value.trim()).filter(Boolean);
+  if(names.length < 2) { toast('Add at least 2 players'); return; }
+
+  localGame.players = names;
+  localGame.votes = names.map(() => ({}));
+  localGame.currentTurn = 0;
   localGame.active = true;
 
-  // Borrow cfg for movie fetching
   const savedCfg = {...cfg};
   cfg.genre = localCfg.genre;
   cfg.count = localCfg.count;
-
   showLoad('Fetching movies...');
   try {
     S.movies = await fetchMovies();
     cfg.genre = savedCfg.genre;
     cfg.count = savedCfg.count;
     hideLoad();
-    // Show handoff for player 1
-    document.getElementById('handoffTitle').textContent = `Hey ${n1}!`;
-    document.getElementById('handoffSub').textContent = `You're up first. Swipe the movies and hand the phone to ${n2} when done.`;
-    document.getElementById('handoffBtn').textContent = "Let's go 🎬";
-    show('handoffScreen');
+    showLocalHandoff(0);
   } catch(e) {
     hideLoad();
     toast('Error loading movies. Try again.');
   }
 }
 
+function showLocalHandoff(turnIndex) {
+  const name = localGame.players[turnIndex];
+  const isFirst = turnIndex === 0;
+  const prevName = !isFirst ? localGame.players[turnIndex - 1] : null;
+  document.getElementById('handoffTitle').textContent = isFirst ? `Hey ${name}!` : `Nice ${prevName}!`;
+  document.getElementById('handoffSub').textContent = isFirst
+    ? `You're up first. Swipe the movies then pass the phone.`
+    : `Pass the phone to ${name} — don't show your choices!`;
+  document.getElementById('handoffBtn').textContent = `I'm ${name} 🎬`;
+  document.getElementById('handoffBtn').onclick = () => continueLocalGame();
+  show('handoffScreen');
+}
+
 function continueLocalGame() {
-  if(localGame.turn === 1) {
-    // Start player 1 swiping
-    S.myName = localGame.player1;
-    S.myVotes = {};
-    S.partnerVotes = null;
-    S.isHost = true;
-    S.phase = 'swiping';
-    S.idx = 0;
-    document.getElementById('myBadge').textContent = localGame.player1;
-    renderCards();
-    show('swipeScreen');
-  } else {
-    // Start player 2 swiping
-    S.myName = localGame.player2;
-    S.myVotes = {};
-    S.partnerVotes = null;
-    S.idx = 0;
-    document.getElementById('myBadge').textContent = localGame.player2;
-    renderCards();
-    show('swipeScreen');
-  }
+  const name = localGame.players[localGame.currentTurn];
+  S.myName = name;
+  S.myVotes = {};
+  S.partnerVotes = null;
+  S.isHost = true;
+  S.phase = 'swiping';
+  S.idx = 0;
+  document.getElementById('myBadge').textContent = name;
+  renderCards();
+  show('swipeScreen');
 }
 
 function finishLocalTurn() {
   stopPreview();
   clearInterval(slideshowTimer);
-  if(localGame.turn === 1) {
-    localGame.votes1 = {...S.myVotes};
-    localGame.turn = 2;
-    // Handoff to player 2
-    document.getElementById('handoffTitle').textContent = `Nice ${localGame.player1}!`;
-    document.getElementById('handoffSub').textContent = `Now pass the phone to ${localGame.player2}. Don't show your choices!`;
-    document.getElementById('handoffBtn').textContent = `I'm ${localGame.player2} 🎬`;
-    show('handoffScreen');
+  localGame.votes[localGame.currentTurn] = {...S.myVotes};
+  localGame.currentTurn++;
+
+  if(localGame.currentTurn < localGame.players.length) {
+    showLocalHandoff(localGame.currentTurn);
   } else {
-    localGame.votes2 = {...S.myVotes};
-    // Both done — show matches
-    S.myVotes = localGame.votes1;
-    S.partnerVotes = localGame.votes2;
-    localGame.active = false;
-    showMatches();
+    // All players done — calculate group matches
+    showLocalMatches();
   }
+}
+
+function showLocalMatches() {
+  const total = localGame.players.length;
+  // Count how many players liked each movie
+  const scores = {};
+  S.movies.forEach(m => {
+    scores[m.id] = localGame.votes.filter(v => v[m.id] === true).length;
+  });
+  // Sort by score descending, only include movies liked by at least 1
+  const ranked = S.movies
+    .filter(m => scores[m.id] > 0)
+    .sort((a, b) => scores[b.id] - scores[a.id]);
+
+  localGame.active = false;
+
+  // For 2 players use normal match screen
+  if(total === 2) {
+    S.myVotes = localGame.votes[0];
+    S.partnerVotes = localGame.votes[1];
+    showMatches();
+    return;
+  }
+
+  // For groups — show ranked results
+  const list = document.getElementById('matchList');
+  const sub = document.getElementById('matchSub');
+  const banner = document.querySelector('.match-banner');
+  list.innerHTML = '';
+
+  if(!ranked.length) {
+    banner.style.background = 'linear-gradient(135deg,#e63c64,#ff6b35)';
+    banner.style.webkitBackgroundClip = 'text';
+    banner.innerHTML = 'NO<br>MATCH 😕';
+    sub.textContent = 'Nobody agreed on anything!';
+  } else {
+    banner.style.background = 'linear-gradient(135deg,var(--match),#00b8ff)';
+    banner.style.webkitBackgroundClip = 'text';
+    banner.innerHTML = "GROUP<br>PICKS!";
+    sub.textContent = `${ranked.length} movie${ranked.length>1?'s':''} got votes`;
+    ranked.forEach((m, i) => {
+      const score = scores[m.id];
+      const el = document.createElement('div');
+      el.className = 'match-item';
+      el.style.animationDelay = `${i*.1}s`;
+      el.innerHTML = `
+        <img class="match-poster" src="${m.poster}" alt="${m.title}"
+          onerror="this.outerHTML='<div class=\"match-emoji-box\">${m.emoji}</div>'">
+        <div>
+          <div class="match-title">${m.title}</div>
+          <div class="match-meta">⭐ ${m.rating} · ${m.year}</div>
+          <div style="font-size:12px;color:var(--match);margin-top:4px">
+            👍 ${score}/${total} players
+          </div>
+        </div>`;
+      list.appendChild(el);
+    });
+  }
+
+  // Hide mode buttons for group (ranking doesn't make sense)
+  document.getElementById('modeButtons').style.display = 'none';
+  if(S.roomRef) S.roomRef.remove().catch(()=>{});
+  show('matchScreen');
 }
 
 // ════════════════════════════════════════════════════════
@@ -1489,7 +1594,7 @@ function hideLoad(){document.getElementById('overlay').classList.remove('show');
 function toast(msg,d=2800){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
 function copyCode(){navigator.clipboard.writeText(S.roomCode).then(()=>toast('Code copied! 📋')).catch(()=>toast(`Code: ${S.roomCode}`));}
 function playAgain(){
-  localGame = { active:false, player1:'', player2:'', votes1:{}, votes2:{}, turn:1 };
+  localGame = { active:false, players:[], votes:[], currentTurn:0 };
   matchedMovies=[];myRanking=[];trailerCache={};backdropCache={};partnerRanking=null;myModeChoice=null;partnerModeChoice=null;modeStarted=false;myRankingSubmitted=false;myModeChoice2=null;partnerModeChoice2=null;
   if(S.peer){try{S.peer.destroy();}catch(e){}}
   S.peer=null;S.conn=null;S.movies=[];S.idx=0;S.myVotes={};S.partnerVotes=null;S.roomRef=null;

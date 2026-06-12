@@ -517,8 +517,9 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     </p>
     <div style="margin-top:20px">
       <span class="pulse"></span>
-      <span style="font-size:13px;color:var(--muted)">Waiting...</span>
+      <span style="font-size:13px;color:var(--muted)" id="doneWaitStatus">Waiting...</span>
     </div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:18px" onclick="forceCheckResults()">Check Results</button>
   </div>
 </div>
 </div>
@@ -807,34 +808,54 @@ function partnerIdFor(id) {
 }
 
 function roomHasBothDone(room) {
-  return !!(room?.players?.host?.done && room?.players?.guest?.done && room?.votes?.host && room?.votes?.guest);
+  return !!(room && room.players && room.players.host && room.players.guest && room.players.host.done === true && room.players.guest.done === true);
 }
 
-async function checkCompletedRoomNow() {
-  if(!S.online || !S.roomRef || S.matchesShown) return;
+async function checkCompletedRoomNow(showMessage = false) {
+  if(!S.roomRef || S.matchesShown) return false;
   try {
     const snap = await S.roomRef.get();
     const room = snap.val();
+    S.lastRoomData = room;
+
     if(room && roomHasBothDone(room)) {
-      S.lastRoomData = room;
-      S.partnerVotes = room.votes?.[S.partnerId] || {};
+      const otherId = S.partnerId || partnerIdFor(S.playerId);
+      S.partnerVotes = room.votes?.[otherId] || {};
       showMatches();
+      return true;
     }
+
+    if(showMessage) {
+      const status = document.getElementById('doneWaitStatus');
+      const otherId = S.partnerId || partnerIdFor(S.playerId);
+      const otherDone = !!room?.players?.[otherId]?.done;
+      const msg = otherDone ? 'Almost there...' : 'Partner has not finished yet';
+      if(status) status.textContent = msg;
+      toast(msg);
+    }
+    return false;
   } catch(e) {
     console.error('Room completion check failed', e);
+    if(showMessage) toast('Could not check results. Check connection.');
+    return false;
   }
+}
+
+function forceCheckResults() {
+  checkCompletedRoomNow(true);
 }
 
 function startDoneWaitFallback() {
   if(S.donePoll) clearInterval(S.donePoll);
   checkCompletedRoomNow();
+  setTimeout(() => checkCompletedRoomNow(), 800);
   S.donePoll = setInterval(() => {
     if(S.phase === 'done' && !S.matchesShown) checkCompletedRoomNow();
     else {
       clearInterval(S.donePoll);
       S.donePoll = null;
     }
-  }, 1500);
+  }, 1200);
 }
 
 function deterministicChoice(a, b) {
@@ -1175,6 +1196,8 @@ function finishSwiping() {
     updates[`players/${S.playerId}/finished`] = Date.now();
     S.roomRef.update(updates).then(() => {
       checkCompletedRoomNow();
+      setTimeout(() => checkCompletedRoomNow(), 800);
+      setTimeout(() => checkCompletedRoomNow(), 2500);
     }).catch(e => {
       console.error(e);
       toast('Could not save votes. Check connection.');
